@@ -311,7 +311,10 @@ function buildArticulosData(){
     if(!articulosData[a])articulosData[a]={stock:0,compras:0,vendido:0,marca:info.marca,rubro:info.rubro,temporada:info.temporada};
     articulosData[a].stock+=parseNum(r.stk_local);
   });
-  rawCompras.forEach(r=>{
+ rawCompras.forEach(r=>{
+    const estado=String(r['Estado']||'').trim().toLowerCase();
+    const impacto=String(r['Impacto stock']||'').trim().toLowerCase();
+    if(estado!=='emitido'||impacto!=='si')return;
     const sku=String(r['Código (SKU)']||'').trim().toUpperCase();const info=parseArticulo(sku);if(!info)return;
     if(f.rubro&&info.rubro!==f.rubro)return;if(f.temporada&&info.temporada!==f.temporada)return;if(f.marca&&info.marca!==f.marca)return;
     const d=parseDate(r['Fecha compra']);if(!d||d<from||d>to)return;
