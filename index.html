@@ -205,7 +205,7 @@ const CLIENT_ID='715960249985-okjpi027cnlgkqc8ik7oqr02phbe2u19.apps.googleuserco
 const SHEET_STOCK='1wpbGgV-PvYtIgSCwwlOdi0LlKWoT_p-BSsQel7WdoXk';
 const SHEET_COMPRAS='1Mntr516YBNV50Unxet3R2JCZMkxzVKxm2DKfkLMhq6M';
 const SHEET_VENTAS='1Cj0MU2d9cPVGu70l0EPC-f7RCy0JOYP9Iwm7_pJXKu8';
-const WEBHOOK_AI='https://pgiacomelli2506.app.n8n.cloud/webhook/ventas-ai-analysis';
+const WEBHOOK_AI='https://pgiacomelli2506.app.n8n.cloud/webhook/stock-ai-analysis';
 const SCOPES='https://www.googleapis.com/auth/spreadsheets.readonly';
 
 let tokenClient,accessToken=null;
@@ -293,7 +293,7 @@ async function loadAllData(){
   if(!accessToken){showError('Primero autenticá.');return;}
   showLoading('Leyendo stock...');hideError();
   try{
-    rawStock=await fetchSheet(SHEET_STOCK,'Hoja 1!A:E');
+    rawStock=await fetchSheet(SHEET_STOCK,'Stock Completo!A:E');
     setLoading('Leyendo compras...');rawCompras=await fetchSheet(SHEET_COMPRAS,'Hoja 1!A:Z');
     setLoading('Leyendo ventas...');rawVentas=await fetchSheet(SHEET_VENTAS,'Hoja 1!A:O');
     setLoading('Procesando...');populateSelects();buildArticulosData();renderAll();
