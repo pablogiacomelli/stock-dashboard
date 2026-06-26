@@ -87,8 +87,7 @@ footer{padding:20px 40px;border-top:1px solid var(--border);font-size:10px;color
     <div class="logo-sub">STOCK · COMPRAS · VELOCIDAD DE VENTA · IA</div>
   </div>
   <div class="header-right">
-    <div class="status-pill"><div class="status-dot" id="statusDot"></div><span id="statusText">Sin autenticar</span></div>
-    <button class="btn-auth" id="btnAuth" onclick="handleAuth()">Conectar Google</button>
+    <div class="status-pill"><div class="status-dot" id="statusDot"></div><span id="statusText">Inicializando…</span></div>
   </div>
 </header>
 
@@ -201,14 +200,10 @@ footer{padding:20px 40px;border-top:1px solid var(--border);font-size:10px;color
 </footer>
 
 <script>
-const CLIENT_ID='715960249985-okjpi027cnlgkqc8ik7oqr02phbe2u19.apps.googleusercontent.com';
-const SHEET_STOCK='1wpbGgV-PvYtIgSCwwlOdi0LlKWoT_p-BSsQel7WdoXk';
-const SHEET_COMPRAS='1Mntr516YBNV50Unxet3R2JCZMkxzVKxm2DKfkLMhq6M';
-const SHEET_VENTAS='1Cj0MU2d9cPVGu70l0EPC-f7RCy0JOYP9Iwm7_pJXKu8';
+const WEBHOOK_DATA='https://pgiacomelli2506.app.n8n.cloud/webhook/stock-data';
 const WEBHOOK_AI='https://pgiacomelli2506.app.n8n.cloud/webhook/stock-ai-analysis';
-const SCOPES='https://www.googleapis.com/auth/spreadsheets.readonly';
+const API_KEY='mahra-stk-9F3K2P7Q-2026';
 
-let tokenClient,accessToken=null;
 let rawStock=[],rawCompras=[],rawVentas=[];
 let articulosData={};
 let charts={};
@@ -217,6 +212,15 @@ let ventasAgrup='dia';
 // ====== CACHE LOCAL (localStorage) ======
 const CACHE_KEY='mahra_stock_cache_v1';
 const CACHE_TTL_MS=7*24*60*60*1000; // 7 días
+
+function setStatus(label,ok){
+  const dot=document.getElementById('statusDot');
+  const txt=document.getElementById('statusText');
+  if(ok===true){dot.classList.add('ok');dot.style.background='';}
+  else if(ok===false){dot.classList.remove('ok');dot.style.background='#ff6060';}
+  else {dot.classList.remove('ok');dot.style.background='#e8c547';}
+  txt.textContent=label;
+}
 
 function saveCache(){
   try{
@@ -264,23 +268,6 @@ function clearCache(){
   location.reload();
 }
 
-function initGSI(){
-  if(typeof google==='undefined')return;
-  tokenClient=google.accounts.oauth2.initTokenClient({
-    client_id:CLIENT_ID,scope:SCOPES,
-    callback:(resp)=>{
-      if(resp.error){showError('Error auth: '+resp.error);return;}
-      accessToken=resp.access_token;
-      document.getElementById('statusDot').classList.add('ok');
-      document.getElementById('statusText').textContent='Autenticado';
-      document.getElementById('btnAuth').textContent='✓ Conectado';
-      document.getElementById('btnAuth').disabled=true;
-      loadAllData();
-    }
-  });
-}
-function handleAuth(){if(typeof google==='undefined'){showError('GSI no cargado.');return;}tokenClient.requestAccessToken({prompt:''});}
-
 function fmtDate(d){return d.toISOString().split('T')[0];}
 function setPreset(days){
   document.querySelectorAll('.controls-bar .preset-btn:not(#btnDia):not(#btnSem):not(#btnMes)').forEach(b=>b.classList.remove('active'));
@@ -299,11 +286,17 @@ function setVentasAgrup(agrup){
 }
 function initDates(){const to=new Date(),from=new Date();from.setDate(to.getDate()-30);document.getElementById('dateFrom').value=fmtDate(from);document.getElementById('dateTo').value=fmtDate(to);}
 
-async function fetchSheet(id,range){
-  const r=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${encodeURIComponent(range)}?valueRenderOption=UNFORMATTED_VALUE`,{headers:{Authorization:'Bearer '+accessToken}});
-  if(!r.ok)throw new Error(`Sheets API ${r.status}`);
-  const data=await r.json();const rows=data.values||[];if(!rows.length)return[];
-  const h=rows[0];return rows.slice(1).map(row=>{const o={};h.forEach((k,i)=>o[k]=row[i]??'');return o;});
+async function fetchStockData(){
+  const resp=await fetch(WEBHOOK_DATA,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-mahra-key':API_KEY},
+    body:JSON.stringify({})
+  });
+  const txt=await resp.text();
+  if(!resp.ok)throw new Error('Webhook HTTP '+resp.status+(txt?' · '+txt.slice(0,150):''));
+  let data;try{data=JSON.parse(txt);}catch{throw new Error('Webhook respuesta no JSON: '+txt.slice(0,150));}
+  if(data.error)throw new Error(data.error);
+  return {stock:data.stock||[],compras:data.compras||[],ventas:data.ventas||[]};
 }
 
 function parseNum(v){if(typeof v==='number')return v;let s=String(v||'').replace(/^[^0-9-]/,'').trim();if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');return parseFloat(s)||0;}
@@ -340,17 +333,21 @@ function populateSelects(){
 }
 
 async function loadAllData(){
-  if(!accessToken){showError('Primero autenticá.');return;}
-  showLoading('Leyendo stock...');hideError();
+  setStatus('Cargando datos…',null);
+  showLoading('Conectando con n8n...');hideError();
   try{
-    rawStock=await fetchSheet(SHEET_STOCK,'Stock Completo!A:E');
-    setLoading('Leyendo compras...');rawCompras=await fetchSheet(SHEET_COMPRAS,'Hoja 1!A:Z');
-    setLoading('Leyendo ventas...');rawVentas=await fetchSheet(SHEET_VENTAS,'Hoja 1!A:O');
+    setLoading('Leyendo Sheets server-side...');
+    const data=await fetchStockData();
+    rawStock=data.stock;rawCompras=data.compras;rawVentas=data.ventas;
     setLoading('Procesando...');populateSelects();buildArticulosData();renderAll();
     document.getElementById('lastUpdate').textContent='⚡ En vivo · '+new Date().toLocaleString('es-AR');
     const cb=document.getElementById('cacheBanner');if(cb)cb.remove();
     saveCache();
-  }catch(e){showError('Error: '+e.message);}finally{hideLoading();}
+    setStatus('En vivo · '+rawStock.length+' SKU / '+rawVentas.length+' ventas',true);
+  }catch(e){
+    showError('Error: '+e.message);
+    setStatus('Error al cargar',false);
+  }finally{hideLoading();}
 }
 
 function buildArticulosData(){
@@ -592,9 +589,10 @@ function showError(m){const el=document.getElementById('errorMsg');el.textConten
 function hideError(){document.getElementById('errorMsg').style.display='none';}
 
 initDates();
-loadCache(); // Restaura el último fetch si está disponible (datos visibles al instante)
-window.onload=()=>{if(typeof google!=='undefined'&&google.accounts)initGSI();};
+const hadCache=loadCache(); // Restaura el último fetch para mostrar datos al instante
+if(hadCache)setStatus('📦 Cache local',null);
+// Auto-load al abrir: trae datos frescos del webhook
+window.addEventListener('load',()=>{loadAllData();});
 </script>
-<script src="https://accounts.google.com/gsi/client" onload="initGSI()" async defer></script>
 </body>
 </html>
