@@ -59,7 +59,7 @@ main{padding:28px 40px}
 .ai-header{display:flex;align-items:center;gap:10px;margin-bottom:18px}
 .ai-badge{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);padding:3px 8px;font-family:var(--font-mono)}
 .ai-model{font-size:10px;color:var(--muted2);font-family:var(--font-mono)}
-.ai-summary{font-size:13px;line-height:1.7;color:var(--text);margin-bottom:22px;border-left:2px solid var(--accent);padding-left:16px}
+.ai-summary{font-size:13px;line-height:1.7;color:var(--text);margin-bottom:22px;border-left:2px solid var(--accent);padding-left:16px;white-space:pre-line}
 .actions-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .action-card{background:var(--surface2);border:1px solid var(--border2);padding:16px;position:relative}
 .action-num{font-family:var(--font-display);font-size:26px;font-weight:800;color:var(--border2);position:absolute;top:8px;right:12px;line-height:1}
@@ -474,13 +474,63 @@ async function runAI(){
   };
   try{
     const resp=await fetch(WEBHOOK_AI,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({resumen,rango,tipo:'stock_intelligence'})});
-    if(!resp.ok)throw new Error('HTTP '+resp.status);
-    const parsed=await resp.json();
-    document.getElementById('aiSummary').textContent=parsed.resumen||'Sin resumen.';
+    const rawText=await resp.text();
+    console.log('[runAI] status:',resp.status,'body:',rawText);
+    if(!resp.ok){
+      throw new Error(`HTTP ${resp.status}${rawText?' · '+rawText.slice(0,200):''}`);
+    }
+    if(!rawText||!rawText.trim()){
+      throw new Error('Webhook respondió vacío. Revisá en n8n: (1) workflow Activo, (2) nodo "Respond to Webhook" al final con Response Body en JSON, (3) que el nodo de Claude no esté fallando. Mientras tanto se muestra un análisis local sin IA.');
+    }
+    let parsed;
+    try{ parsed=JSON.parse(rawText); }
+    catch(jsonErr){ throw new Error(`Respuesta no es JSON. Recibido: ${rawText.slice(0,300)}`); }
+    // n8n suele envolver: [{output:{...}}] / {output:"..."} / {data:{...}}
+    if(Array.isArray(parsed)) parsed=parsed[0]||{};
+    if(parsed&&parsed.output!==undefined) parsed=parsed.output;
+    if(parsed&&parsed.data!==undefined&&!parsed.resumen) parsed=parsed.data;
+    if(typeof parsed==='string'){ try{ parsed=JSON.parse(parsed); }catch{} }
+    if(!parsed||typeof parsed!=='object') parsed={};
+    document.getElementById('aiSummary').textContent=parsed.resumen||'Sin resumen devuelto por el webhook.';
     const tc={URGENTE:'urgente',OPORTUNIDAD:'oportunidad','ATENCIÓN':'atencion',TENDENCIA:'tendencia'};
-    document.getElementById('actionsGrid').innerHTML=(parsed.acciones||[]).map(a=>`<div class="action-card"><div class="action-num">${a.num}</div><div class="action-tag ${tc[a.tag]||'atencion'}">· ${a.tag}</div><div class="action-title">${a.titulo}</div><div class="action-desc">${a.descripcion}</div></div>`).join('');
-  }catch(e){document.getElementById('aiSummary').textContent='Error: '+e.message;}
+    const acciones=Array.isArray(parsed.acciones)?parsed.acciones:[];
+    document.getElementById('actionsGrid').innerHTML=acciones.length
+      ? acciones.map(a=>`<div class="action-card"><div class="action-num">${a.num||''}</div><div class="action-tag ${tc[a.tag]||'atencion'}">· ${a.tag||''}</div><div class="action-title">${a.titulo||''}</div><div class="action-desc">${a.descripcion||''}</div></div>`).join('')
+      : '<div class="action-card"><div class="action-tag atencion">· sin acciones</div><div class="action-title">El webhook no devolvió acciones</div><div class="action-desc">Verificá el formato de salida del workflow.</div></div>';
+  }catch(e){
+    console.error('[runAI] error:',e);
+    // Fallback local: análisis heurístico sin IA con los datos ya calculados
+    const fb=buildLocalAnalysis(arts,resumen);
+    document.getElementById('aiSummary').textContent='⚠ '+e.message+'\n\n— Mostrando análisis local de respaldo (sin IA) —\n'+fb.resumen;
+    const tcFb={URGENTE:'urgente',OPORTUNIDAD:'oportunidad','ATENCIÓN':'atencion',TENDENCIA:'tendencia'};
+    document.getElementById('actionsGrid').innerHTML=fb.acciones.map(a=>`<div class="action-card"><div class="action-num">${a.num}</div><div class="action-tag ${tcFb[a.tag]||'atencion'}">· ${a.tag}</div><div class="action-title">${a.titulo}</div><div class="action-desc">${a.descripcion}</div></div>`).join('');
+  }
   finally{btn.textContent='↻ Regenerar';btn.disabled=false;}
+}
+
+// Análisis local (heurístico, sin IA) — se usa cuando el webhook falla
+function buildLocalAnalysis(arts,resumen){
+  const criticos=arts.filter(([,d])=>d.velocidad>0.1&&d.cobertura<2).sort((a,b)=>a[1].cobertura-b[1].cobertura);
+  const baja=arts.filter(([,d])=>d.stock>10&&d.velocidad<0.5).sort((a,b)=>b[1].stock-a[1].stock);
+  const top=arts.slice(0,5);
+  const acciones=[];let n=1;
+  if(criticos.length){
+    const top3=criticos.slice(0,3).map(([a,d])=>`${a} (${fmtD(d.cobertura)} sem · ${fmtN(d.stock)}u)`).join(', ');
+    acciones.push({num:String(n++).padStart(2,'0'),tag:'URGENTE',titulo:`Reponer ${criticos.length} artículo${criticos.length>1?'s':''} en stock crítico`,descripcion:`Cobertura <2 semanas en alta venta. Top: ${top3}.`});
+  }
+  if(baja.length){
+    const top3=baja.slice(0,3).map(([a,d])=>`${a} (${fmtN(d.stock)}u, vel ${fmtD(d.velocidad)})`).join(', ');
+    acciones.push({num:String(n++).padStart(2,'0'),tag:'OPORTUNIDAD',titulo:`Liquidar ${baja.length} artículo${baja.length>1?'s':''} de baja rotación`,descripcion:`Stock alto + ventas bajas. Top inmovilizado: ${top3}.`});
+  }
+  if(top.length){
+    const tList=top.map(([a,d])=>`${a} (${fmtN(d.vendido)}u)`).join(', ');
+    acciones.push({num:String(n++).padStart(2,'0'),tag:'TENDENCIA',titulo:'Top 5 artículos por ventas en el período',descripcion:tList});
+  }
+  acciones.push({num:String(n++).padStart(2,'0'),tag:'ATENCIÓN',titulo:'Rotación global',descripcion:`Rotación del período: ${resumen.rotacion_global}. Pareto: ${resumen.pareto}.`});
+  return {
+    resumen:`Análisis heurístico local sobre ${resumen.total_articulos} artículos. ${criticos.length} en stock crítico, ${baja.length} con baja rotación. Vendido total: ${fmtN(resumen.total_vendido)}u. Rotación global: ${resumen.rotacion_global}.`,
+    acciones
+  };
 }
 
 function showLoading(t){document.getElementById('loadingText').textContent=t;document.getElementById('loadingOverlay').classList.add('visible');}
