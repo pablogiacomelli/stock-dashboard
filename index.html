@@ -75,7 +75,43 @@ main{padding:28px 40px}
 @keyframes blink{50%{opacity:0}}
 footer{padding:20px 40px;border-top:1px solid var(--border);font-size:10px;color:var(--muted2);font-family:var(--font-mono);letter-spacing:.1em;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
 .empty-state{text-align:center;padding:40px 20px;color:var(--muted2);font-size:12px;font-family:var(--font-mono);letter-spacing:.1em}
-@media(max-width:768px){header,.controls-bar,main,footer{padding-left:20px;padding-right:20px}.charts-grid,.alert-grid{grid-template-columns:1fr}.chart-full{grid-column:1}.scorecards{grid-template-columns:repeat(2,1fr)}}
+/* ===== MODAL ARTÍCULO ===== */
+.article-modal{position:fixed;inset:0;z-index:600;display:none;justify-content:flex-end}
+.article-modal.open{display:flex}
+.am-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(2px)}
+.am-panel{position:relative;width:min(580px,100%);background:var(--surface);border-left:1px solid var(--border2);height:100%;overflow-y:auto;animation:amSlide .25s ease-out}
+@keyframes amSlide{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.am-header{position:sticky;top:0;background:var(--surface);padding:22px 28px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;z-index:2}
+.am-eyebrow{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted2);font-family:var(--font-mono);margin-bottom:6px}
+.am-title{font-family:var(--font-display);font-size:22px;font-weight:300;color:var(--text);line-height:1.1}
+.am-title em{color:var(--accent);font-style:italic}
+.am-close{background:transparent;border:1px solid var(--border2);color:var(--muted);width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;border-radius:3px;transition:all .15s;line-height:1;flex-shrink:0}
+.am-close:hover{border-color:var(--accent);color:var(--accent)}
+.am-section{padding:18px 28px;border-bottom:1px solid var(--border)}
+.am-section:last-child{border-bottom:none}
+.am-section h3{font-family:var(--font-display);font-size:13px;font-weight:300;color:var(--text);margin-bottom:14px;letter-spacing:.01em}
+.am-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.am-kpi{background:var(--surface);padding:14px 16px}
+.am-kpi-label{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted2);font-family:var(--font-mono);margin-bottom:5px}
+.am-kpi-value{font-family:var(--font-display);font-size:17px;font-weight:300;color:var(--text);line-height:1}
+.am-kpi-sub{font-size:9px;color:var(--muted);font-family:var(--font-mono);margin-top:3px}
+.am-chart-wrap{position:relative;height:180px}
+.am-matrix{display:grid;gap:1px;background:var(--border);border:1px solid var(--border);font-family:var(--font-mono);font-size:10px;overflow-x:auto}
+.am-matrix-cell{background:var(--surface);padding:6px 8px;text-align:center;color:var(--text);min-width:36px}
+.am-matrix-cell.head{color:var(--muted2);font-weight:500;letter-spacing:.05em;text-transform:uppercase;background:var(--surface2)}
+.am-matrix-cell.lbl{color:var(--accent);text-align:left}
+.am-matrix-cell.zero{color:var(--muted2)}
+.am-matrix-cell.tot{color:var(--accent);font-weight:500;background:var(--surface2)}
+.am-table{width:100%;border-collapse:collapse;font-size:11px;font-family:var(--font-mono)}
+.am-table th{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted2);padding:7px 8px;border-bottom:1px solid var(--border);font-weight:400}
+.am-table td{padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text)}
+.am-table tr:last-child td{border-bottom:none}
+.am-table .td-num{text-align:right;font-variant-numeric:tabular-nums}
+.am-empty{color:var(--muted2);font-family:var(--font-mono);font-size:11px;text-align:center;padding:14px 0;letter-spacing:.05em}
+.am-row-click{cursor:pointer;transition:background .12s}
+.am-row-click:hover td{background:rgba(212,168,83,.06)}
+
+@media(max-width:768px){header,.controls-bar,main,footer{padding-left:20px;padding-right:20px}.charts-grid,.alert-grid{grid-template-columns:1fr}.chart-full{grid-column:1}.scorecards{grid-template-columns:repeat(2,1fr)}.am-panel{width:100%}.am-kpis{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -193,6 +229,37 @@ footer{padding:20px 40px;border-top:1px solid var(--border);font-size:10px;color
     </div>
   </div>
 </main>
+
+<!-- ===== MODAL DETALLE ARTÍCULO ===== -->
+<div class="article-modal" id="articleModal" aria-hidden="true">
+  <div class="am-backdrop" onclick="closeArticleModal()"></div>
+  <div class="am-panel">
+    <div class="am-header">
+      <div>
+        <div class="am-eyebrow">Artículo</div>
+        <h2 class="am-title">MAHRA <em id="modalArticleName">—</em></h2>
+      </div>
+      <button class="am-close" onclick="closeArticleModal()" aria-label="Cerrar">×</button>
+    </div>
+    <div class="am-kpis" id="modalKpis"></div>
+    <div class="am-section">
+      <h3>Ventas mensuales · últimos 12</h3>
+      <div class="am-chart-wrap"><canvas id="modalMonthlyChart"></canvas></div>
+    </div>
+    <div class="am-section">
+      <h3>Stock actual por talle</h3>
+      <div id="modalStockByTalle"></div>
+    </div>
+    <div class="am-section">
+      <h3>Ventas del período · color × talle</h3>
+      <div id="modalSalesMatrix"></div>
+    </div>
+    <div class="am-section">
+      <h3>Últimas 5 compras</h3>
+      <div id="modalPurchases"></div>
+    </div>
+  </div>
+</div>
 
 <footer>
   <span>MAHRA · Stock Intelligence · Google Sheets API</span>
@@ -488,16 +555,16 @@ function renderRotacionChart(arts){
 
 function renderAlertas(arts){
   const criticos=arts.filter(([,d])=>d.velocidad>0.1&&d.cobertura<2).sort((a,b)=>a[1].cobertura-b[1].cobertura).slice(0,10);
-  document.getElementById('critBody').innerHTML=criticos.map(([a,d])=>`<tr><td style="font-family:var(--font-display);font-size:12px">${a}</td><td style="color:var(--accent);font-size:10px">${d.marca}</td><td class="td-num">${fmtN(d.stock)}</td><td class="td-num">${fmtD(d.velocidad)}</td><td class="td-num" style="color:var(--red);font-weight:500">${fmtD(d.cobertura)}</td></tr>`).join('')||'<tr><td colspan="5" class="empty-state">Sin artículos críticos ✓</td></tr>';
+  document.getElementById('critBody').innerHTML=criticos.map(([a,d])=>`<tr class="am-row-click" data-article="${a}"><td style="font-family:var(--font-display);font-size:12px">${a}</td><td style="color:var(--accent);font-size:10px">${d.marca}</td><td class="td-num">${fmtN(d.stock)}</td><td class="td-num">${fmtD(d.velocidad)}</td><td class="td-num" style="color:var(--red);font-weight:500">${fmtD(d.cobertura)}</td></tr>`).join('')||'<tr><td colspan="5" class="empty-state">Sin artículos críticos ✓</td></tr>';
   const baja=arts.filter(([,d])=>d.stock>10&&d.velocidad<0.5).sort((a,b)=>b[1].stock-a[1].stock).slice(0,10);
-  document.getElementById('bajaBody').innerHTML=baja.map(([a,d])=>`<tr><td style="font-family:var(--font-display);font-size:12px">${a}</td><td style="color:var(--accent);font-size:10px">${d.marca}</td><td class="td-num">${fmtN(d.stock)}</td><td class="td-num">${fmtD(d.velocidad)}</td><td class="td-num" style="color:var(--yellow)">${d.cobertura>=999?'∞':fmtD(d.cobertura)}</td></tr>`).join('')||'<tr><td colspan="5" class="empty-state">Sin baja rotación</td></tr>';
+  document.getElementById('bajaBody').innerHTML=baja.map(([a,d])=>`<tr class="am-row-click" data-article="${a}"><td style="font-family:var(--font-display);font-size:12px">${a}</td><td style="color:var(--accent);font-size:10px">${d.marca}</td><td class="td-num">${fmtN(d.stock)}</td><td class="td-num">${fmtD(d.velocidad)}</td><td class="td-num" style="color:var(--yellow)">${d.cobertura>=999?'∞':fmtD(d.cobertura)}</td></tr>`).join('')||'<tr><td colspan="5" class="empty-state">Sin baja rotación</td></tr>';
 }
 
 function renderTablaVelocidad(){
   const search=document.getElementById('searchArt').value.toLowerCase();
   const arts=Object.entries(articulosData).filter(([a])=>!search||a.toLowerCase().includes(search)).sort((a,b)=>b[1].vendido-a[1].vendido);
   const sem=cob=>{if(cob<=0)return'';if(cob>=999)return'<span class="semaforo sem-green"></span>∞';if(cob<2)return`<span class="semaforo sem-red"></span>${fmtD(cob)}`;if(cob<4)return`<span class="semaforo sem-yellow"></span>${fmtD(cob)}`;return`<span class="semaforo sem-green"></span>${fmtD(cob)}`;};
-  document.getElementById('velBody').innerHTML=arts.slice(0,100).map(([a,d])=>`<tr><td>${d.velocidad>0?(d.cobertura<2?'🔴':d.cobertura<4?'🟡':'🟢'):'⚪'}</td><td style="font-family:var(--font-display);font-size:12px">${a}</td><td style="color:var(--accent)">${d.marca}</td><td style="color:var(--muted)">${d.rubro}</td><td class="td-num">${fmtN(d.stock)}</td><td class="td-num">${fmtN(d.compras)}</td><td class="td-num">${fmtN(d.vendido)}</td><td class="td-num">${fmtD(d.velocidad)}</td><td class="td-num">${sem(d.cobertura)}</td><td class="td-num">${d.rotacion!==null?Math.round(d.rotacion*100)+'%':'—'}</td></tr>`).join('')||'<tr><td colspan="10" class="empty-state">Sin datos</td></tr>';
+  document.getElementById('velBody').innerHTML=arts.slice(0,100).map(([a,d])=>`<tr class="am-row-click" data-article="${a}"><td>${d.velocidad>0?(d.cobertura<2?'🔴':d.cobertura<4?'🟡':'🟢'):'⚪'}</td><td style="font-family:var(--font-display);font-size:12px">${a}</td><td style="color:var(--accent)">${d.marca}</td><td style="color:var(--muted)">${d.rubro}</td><td class="td-num">${fmtN(d.stock)}</td><td class="td-num">${fmtN(d.compras)}</td><td class="td-num">${fmtN(d.vendido)}</td><td class="td-num">${fmtD(d.velocidad)}</td><td class="td-num">${sem(d.cobertura)}</td><td class="td-num">${d.rotacion!==null?Math.round(d.rotacion*100)+'%':'—'}</td></tr>`).join('')||'<tr><td colspan="10" class="empty-state">Sin datos</td></tr>';
 }
 
 async function runAI(){
@@ -581,6 +648,100 @@ function buildLocalAnalysis(arts,resumen){
     acciones
   };
 }
+
+// ===== MODAL DETALLE ARTÍCULO =====
+function openArticleModal(article){
+  if(!article)return;
+  const ART=String(article).toUpperCase();
+
+  const stockRows=rawStock.filter(r=>{const i=parseArticulo(String(r.sku||'').trim().toUpperCase());return i&&i.articulo===ART;});
+  const ventasRows=rawVentas.filter(r=>String(r.articulo||'').toUpperCase()===ART);
+  const comprasRows=rawCompras.filter(r=>{const i=parseArticulo(String(r['Código (SKU)']||'').trim().toUpperCase());return i&&i.articulo===ART;});
+
+  const stkTotal=stockRows.reduce((s,r)=>s+parseNum(r.stk_local),0);
+  const vendido=ventasRows.reduce((s,r)=>s+parseNum(r.cantidad),0);
+  const comprado=comprasRows.reduce((s,r)=>s+parseNum(r.Cantidad),0);
+  const ingreso=ventasRows.reduce((s,r)=>s+parseNum(r.total),0);
+  const costoTot=ventasRows.reduce((s,r)=>s+parseNum(r.costo),0);
+  const margen=ingreso>0?((ingreso-costoTot)/ingreso*100).toFixed(0)+'%':'—';
+  const ticket=vendido>0?Math.round(ingreso/vendido):0;
+  const skus=new Set(stockRows.map(r=>String(r.sku||'').toUpperCase())).size;
+  const rotaArt=comprado>0?Math.round(vendido/comprado*100)+'%':'—';
+
+  document.getElementById('modalArticleName').textContent=article;
+  document.getElementById('modalKpis').innerHTML=`
+    <div class="am-kpi"><div class="am-kpi-label">Stock</div><div class="am-kpi-value">${fmtN(stkTotal)}</div><div class="am-kpi-sub">${skus} SKU activos</div></div>
+    <div class="am-kpi"><div class="am-kpi-label">Vendido</div><div class="am-kpi-value">${fmtN(vendido)}</div><div class="am-kpi-sub">unidades · período</div></div>
+    <div class="am-kpi"><div class="am-kpi-label">Comprado</div><div class="am-kpi-value">${fmtN(comprado)}</div><div class="am-kpi-sub">unidades · período</div></div>
+    <div class="am-kpi"><div class="am-kpi-label">Ingreso</div><div class="am-kpi-value">$${fmtN(ingreso)}</div><div class="am-kpi-sub">ticket $${fmtN(ticket)}</div></div>
+    <div class="am-kpi"><div class="am-kpi-label">Margen</div><div class="am-kpi-value">${margen}</div><div class="am-kpi-sub">${costoTot>0?'sobre costo':'sin costo'}</div></div>
+    <div class="am-kpi"><div class="am-kpi-label">Rotación</div><div class="am-kpi-value">${rotaArt}</div><div class="am-kpi-sub">vendido/comprado</div></div>
+  `;
+
+  // Ventas mensuales (últimos 12 meses)
+  const byMonth={};
+  ventasRows.forEach(r=>{const d=parseDate(r.fecha);if(!d)return;const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');byMonth[k]=(byMonth[k]||0)+parseNum(r.cantidad);});
+  const today=new Date();const last12=[];
+  for(let i=11;i>=0;i--){const d=new Date(today.getFullYear(),today.getMonth()-i,1);const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');last12.push({label:d.toLocaleString('es-AR',{month:'short',year:'2-digit'}),v:byMonth[k]||0});}
+  if(charts.modalMonthly){charts.modalMonthly.destroy();delete charts.modalMonthly;}
+  charts.modalMonthly=new Chart(document.getElementById('modalMonthlyChart'),{
+    type:'bar',
+    data:{labels:last12.map(m=>m.label),datasets:[{label:'Unidades',data:last12.map(m=>m.v),backgroundColor:'#d4a853b0',borderColor:'#d4a853',borderWidth:1}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#171714',borderColor:'rgba(255,255,255,.12)',borderWidth:1,titleColor:'#f0ede8',bodyColor:'#9a9690',callbacks:{label:ctx=>` ${fmtN(ctx.parsed.y)} u`}}},
+      scales:{x:{grid:{color:'rgba(255,255,255,.03)'},ticks:{color:'#5a5750',font:{family:'DM Mono',size:9}}},y:{grid:{color:'rgba(255,255,255,.03)'},ticks:{color:'#5a5750',font:{family:'DM Mono',size:9}},beginAtZero:true}}}
+  });
+
+  // Stock por talle
+  const byTalle={};
+  stockRows.forEach(r=>{const info=parseArticulo(String(r.sku||'').trim().toUpperCase());if(!info)return;const t=info.talle||'?';if(!byTalle[t])byTalle[t]={total:0,byColor:{}};const stk=parseNum(r.stk_local);byTalle[t].total+=stk;const c=info.color||'?';byTalle[t].byColor[c]=(byTalle[t].byColor[c]||0)+stk;});
+  const talles=Object.keys(byTalle).sort((a,b)=>parseInt(a,10)-parseInt(b,10));
+  document.getElementById('modalStockByTalle').innerHTML=talles.length?`
+    <table class="am-table"><thead><tr><th>Talle</th><th class="td-num">Total</th><th>Desglose por color</th></tr></thead>
+    <tbody>${talles.map(t=>{const colors=Object.entries(byTalle[t].byColor).filter(([,v])=>v>0).map(([c,v])=>`${c}:${fmtN(v)}`).join(' · ');return `<tr><td>${t}</td><td class="td-num">${fmtN(byTalle[t].total)}</td><td style="color:var(--muted)">${colors||'—'}</td></tr>`;}).join('')}</tbody></table>`
+    :'<p class="am-empty">Sin stock activo</p>';
+
+  // Matriz ventas color × talle
+  const matrix={};const allTalles=new Set();
+  ventasRows.forEach(r=>{const t=String(r.talle||'?'),c=String(r.color||'?').toUpperCase();if(!matrix[c])matrix[c]={};matrix[c][t]=(matrix[c][t]||0)+parseNum(r.cantidad);allTalles.add(t);});
+  const colorsArr=Object.keys(matrix).sort();const tList=[...allTalles].sort((a,b)=>parseInt(a,10)-parseInt(b,10));
+  if(colorsArr.length&&tList.length){
+    const cols=tList.length+2;
+    let html=`<div class="am-matrix" style="grid-template-columns:repeat(${cols},minmax(36px,1fr))">`;
+    html+=`<div class="am-matrix-cell head">Color</div>`;
+    tList.forEach(t=>{html+=`<div class="am-matrix-cell head">${t}</div>`;});
+    html+=`<div class="am-matrix-cell head">Σ</div>`;
+    colorsArr.forEach(c=>{
+      html+=`<div class="am-matrix-cell lbl">${c}</div>`;
+      let rowTotal=0;
+      tList.forEach(t=>{const v=matrix[c][t]||0;rowTotal+=v;html+=`<div class="am-matrix-cell ${v===0?'zero':''}">${v||'·'}</div>`;});
+      html+=`<div class="am-matrix-cell tot">${fmtN(rowTotal)}</div>`;
+    });
+    html+='</div>';
+    document.getElementById('modalSalesMatrix').innerHTML=html;
+  }else{
+    document.getElementById('modalSalesMatrix').innerHTML='<p class="am-empty">Sin ventas en el período</p>';
+  }
+
+  // Últimas 5 compras
+  const sortedC=[...comprasRows].sort((a,b)=>{const da=parseDate(a['Fecha compra'])||new Date(0);const db=parseDate(b['Fecha compra'])||new Date(0);return db-da;});
+  document.getElementById('modalPurchases').innerHTML=sortedC.length?`
+    <table class="am-table"><thead><tr><th>Fecha</th><th>Proveedor</th><th class="td-num">Cant.</th><th class="td-num">$ unit.</th></tr></thead>
+    <tbody>${sortedC.slice(0,5).map(c=>{const qty=parseNum(c['Cantidad']);const total=parseNum(c['Subtotal ($)']||c['Importe ($)']||c['Precio neto ($)']||0);const unit=qty>0?Math.round(total/qty):0;return `<tr><td>${c['Fecha compra']||'—'}</td><td style="color:var(--muted)">${String(c['Nombre proveedor']||'—').slice(0,28)}</td><td class="td-num">${fmtN(qty)}</td><td class="td-num">$${fmtN(unit)}</td></tr>`;}).join('')}</tbody></table>`
+    :'<p class="am-empty">Sin compras en el período</p>';
+
+  document.getElementById('articleModal').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+
+function closeArticleModal(){
+  document.getElementById('articleModal').classList.remove('open');
+  document.body.style.overflow='';
+  if(charts.modalMonthly){charts.modalMonthly.destroy();delete charts.modalMonthly;}
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeArticleModal();});
+// Delegación de click: cualquier elemento con data-article abre el modal
+document.addEventListener('click',e=>{const t=e.target.closest('[data-article]');if(t&&t.dataset.article)openArticleModal(t.dataset.article);});
 
 function showLoading(t){document.getElementById('loadingText').textContent=t;document.getElementById('loadingOverlay').classList.add('visible');}
 function setLoading(t){document.getElementById('loadingText').textContent=t;}
