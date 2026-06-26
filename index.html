@@ -214,6 +214,56 @@ let articulosData={};
 let charts={};
 let ventasAgrup='dia';
 
+// ====== CACHE LOCAL (localStorage) ======
+const CACHE_KEY='mahra_stock_cache_v1';
+const CACHE_TTL_MS=7*24*60*60*1000; // 7 días
+
+function saveCache(){
+  try{
+    const payload={ts:Date.now(),dateFrom:document.getElementById('dateFrom').value,dateTo:document.getElementById('dateTo').value,temporada:document.getElementById('selTemporada').value,rubro:document.getElementById('selRubro').value,marca:document.getElementById('selMarca').value,rawStock,rawCompras,rawVentas};
+    const json=JSON.stringify(payload);
+    if(json.length>4500000){console.warn('[cache] datos muy grandes ('+(json.length/1e6).toFixed(1)+'MB), salteado');return;}
+    localStorage.setItem(CACHE_KEY,json);
+    console.log('[cache] guardado '+(json.length/1024).toFixed(0)+'KB');
+  }catch(e){console.warn('[cache] error guardando:',e.message);}
+}
+function loadCache(){
+  try{
+    const raw=localStorage.getItem(CACHE_KEY);
+    if(!raw)return false;
+    const c=JSON.parse(raw);
+    if(!c||!c.ts)return false;
+    if(Date.now()-c.ts>CACHE_TTL_MS){localStorage.removeItem(CACHE_KEY);return false;}
+    if(c.dateFrom)document.getElementById('dateFrom').value=c.dateFrom;
+    if(c.dateTo)document.getElementById('dateTo').value=c.dateTo;
+    rawStock=c.rawStock||[];rawCompras=c.rawCompras||[];rawVentas=c.rawVentas||[];
+    populateSelects();
+    if(c.temporada)document.getElementById('selTemporada').value=c.temporada;
+    if(c.rubro)document.getElementById('selRubro').value=c.rubro;
+    if(c.marca)document.getElementById('selMarca').value=c.marca;
+    buildArticulosData();renderAll();
+    const d=new Date(c.ts);
+    document.getElementById('lastUpdate').textContent='📦 Cache local · '+d.toLocaleString('es-AR');
+    showCacheBanner(d);
+    console.log('[cache] restaurado del '+d.toLocaleString('es-AR'));
+    return true;
+  }catch(e){console.warn('[cache] error leyendo:',e.message);return false;}
+}
+function showCacheBanner(date){
+  if(document.getElementById('cacheBanner'))return;
+  const banner=document.createElement('div');
+  banner.id='cacheBanner';
+  banner.style.cssText='background:#d4a85318;border:1px solid #d4a85340;color:#d4a853;padding:10px 16px;font-size:11px;margin:0 40px 16px;letter-spacing:.05em;font-family:var(--font-mono);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap';
+  banner.innerHTML='<span>📦 Mostrando datos cacheados del '+date.toLocaleString('es-AR')+'. Conectá Google y presioná ↻ Cargar para refrescar.</span><button onclick="clearCache()" style="background:transparent;border:1px solid #d4a853;color:#d4a853;padding:4px 10px;font-family:var(--font-mono);font-size:10px;cursor:pointer;border-radius:3px">Limpiar cache</button>';
+  const main=document.querySelector('main');
+  main.insertBefore(banner,main.firstChild);
+}
+function clearCache(){
+  if(!confirm('¿Borrar el cache local? Vas a tener que reconectar Google para volver a ver los datos.'))return;
+  localStorage.removeItem(CACHE_KEY);
+  location.reload();
+}
+
 function initGSI(){
   if(typeof google==='undefined')return;
   tokenClient=google.accounts.oauth2.initTokenClient({
@@ -297,7 +347,9 @@ async function loadAllData(){
     setLoading('Leyendo compras...');rawCompras=await fetchSheet(SHEET_COMPRAS,'Hoja 1!A:Z');
     setLoading('Leyendo ventas...');rawVentas=await fetchSheet(SHEET_VENTAS,'Hoja 1!A:O');
     setLoading('Procesando...');populateSelects();buildArticulosData();renderAll();
-    document.getElementById('lastUpdate').textContent='Actualizado '+new Date().toLocaleString('es-AR');
+    document.getElementById('lastUpdate').textContent='⚡ En vivo · '+new Date().toLocaleString('es-AR');
+    const cb=document.getElementById('cacheBanner');if(cb)cb.remove();
+    saveCache();
   }catch(e){showError('Error: '+e.message);}finally{hideLoading();}
 }
 
@@ -540,6 +592,7 @@ function showError(m){const el=document.getElementById('errorMsg');el.textConten
 function hideError(){document.getElementById('errorMsg').style.display='none';}
 
 initDates();
+loadCache(); // Restaura el último fetch si está disponible (datos visibles al instante)
 window.onload=()=>{if(typeof google!=='undefined'&&google.accounts)initGSI();};
 </script>
 <script src="https://accounts.google.com/gsi/client" onload="initGSI()" async defer></script>
