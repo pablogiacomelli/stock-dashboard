@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MAHRA · Stock Intelligence</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -25,6 +26,20 @@ header{padding:24px 40px 18px;border-bottom:1px solid var(--border);display:flex
 .preset-btn{background:transparent;border:1px solid var(--border2);color:var(--muted);font-family:var(--font-mono);font-size:11px;padding:5px 10px;cursor:pointer;letter-spacing:.05em;border-radius:3px;transition:all .15s}.preset-btn:hover{border-color:var(--accent);color:var(--accent)}.preset-btn.active{background:var(--accent);color:#000;border-color:var(--accent);font-weight:500}
 .btn-load{background:transparent;border:1px solid var(--accent);color:var(--accent);font-family:var(--font-mono);font-size:11px;padding:7px 16px;cursor:pointer;letter-spacing:.1em;text-transform:uppercase;transition:all .15s;margin-left:auto}.btn-load:hover{background:var(--accent);color:#000}
 select.date-input{appearance:auto}
+/* ===== SELECTOR MÚLTIPLE (temporadas / marcas) ===== */
+.ms{position:relative;display:inline-block}
+.ms-btn{background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--font-mono);font-size:12px;padding:6px 10px;cursor:pointer;min-width:112px;text-align:left;outline:none}
+.ms-btn:hover{border-color:var(--accent)}
+.ms.sel .ms-btn{border-color:var(--accent);color:var(--accent)}
+.ms-panel{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:300;background:var(--surface);border:1px solid var(--border2);min-width:160px;max-height:280px;overflow-y:auto;padding:6px;box-shadow:0 10px 28px rgba(0,0,0,.55)}
+.ms.open .ms-panel{display:block}
+.ms-actions{display:flex;gap:10px;padding:2px 4px 6px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.ms-actions span{font-size:10px;color:var(--accent);cursor:pointer;font-family:var(--font-mono);text-decoration:underline}
+.ms-actions span:hover{opacity:.7}
+.ms-item{display:flex;align-items:center;gap:7px;padding:4px 5px;font-size:11px;font-family:var(--font-mono);cursor:pointer;color:var(--text);white-space:nowrap}
+.ms-item:hover{background:var(--surface2)}
+.ms-item input{cursor:pointer;accent-color:#d4a853}
+.ms-empty{color:var(--muted2);font-size:11px;font-family:var(--font-mono);padding:6px}
 .error-msg{display:none;background:#e0706018;border:1px solid #e0706040;color:var(--red);padding:12px 16px;font-size:12px;margin:0 40px 20px;letter-spacing:.05em;font-family:var(--font-mono)}
 main{padding:28px 40px}
 .scorecards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:28px}
@@ -143,14 +158,27 @@ footer{padding:20px 40px;border-top:1px solid var(--border);font-size:10px;color
     <button class="preset-btn" onclick="setPreset(180)">6M</button>
   </div>
   <span class="range-label" style="margin-left:8px">Temporada</span>
-  <select class="date-input" id="selTemporada" style="min-width:100px" onchange="renderAll()"><option value="">Todas</option></select>
+  <div class="ms" id="msTemporada">
+    <button type="button" class="ms-btn" onclick="msToggle('Temporada')"><span id="msTemporadaLbl">Todas</span> ▾</button>
+    <div class="ms-panel">
+      <div class="ms-actions"><span onclick="msAll('Temporada',true)">Todas</span><span onclick="msAll('Temporada',false)">Ninguna</span></div>
+      <div id="msTemporadaList"></div>
+    </div>
+  </div>
   <span class="range-label">Rubro</span>
   <select class="date-input" id="selRubro" style="min-width:100px" onchange="renderAll()">
     <option value="">Todos</option><option value="CAL">Calzados</option><option value="CAR">Carteras</option><option value="ACC">Accesorios</option>
   </select>
   <span class="range-label">Marca</span>
-  <select class="date-input" id="selMarca" style="min-width:100px" onchange="renderAll()"><option value="">Todas</option></select>
+  <div class="ms" id="msMarca">
+    <button type="button" class="ms-btn" onclick="msToggle('Marca')"><span id="msMarcaLbl">Todas</span> ▾</button>
+    <div class="ms-panel">
+      <div class="ms-actions"><span onclick="msAll('Marca',true)">Todas</span><span onclick="msAll('Marca',false)">Ninguna</span></div>
+      <div id="msMarcaList"></div>
+    </div>
+  </div>
   <button class="btn-load" onclick="loadAllData()">↻ Cargar</button>
+  <button class="btn-load" style="margin-left:8px" onclick="descargarExcel()" title="Descarga el stock valorizado a costo PPC, una fila por SKU, respetando los filtros activos">⬇ Excel</button>
 </div>
 
 <div class="error-msg" id="errorMsg"></div>
@@ -312,7 +340,7 @@ function setStatus(label,ok){
 
 function saveCache(){
   try{
-    const payload={ts:Date.now(),dateFrom:document.getElementById('dateFrom').value,dateTo:document.getElementById('dateTo').value,temporada:document.getElementById('selTemporada').value,rubro:document.getElementById('selRubro').value,marca:document.getElementById('selMarca').value,rawStock,rawCompras,rawVentas,rawBI};
+    const payload={ts:Date.now(),dateFrom:document.getElementById('dateFrom').value,dateTo:document.getElementById('dateTo').value,temporadas:[...MS.Temporada],rubro:document.getElementById('selRubro').value,marcas:[...MS.Marca],rawStock,rawCompras,rawVentas,rawBI};
     const json=JSON.stringify(payload);
     if(json.length>4500000){console.warn('[cache] datos muy grandes ('+(json.length/1e6).toFixed(1)+'MB), salteado');return;}
     localStorage.setItem(CACHE_KEY,json);
@@ -329,10 +357,10 @@ function loadCache(){
     if(c.dateFrom)document.getElementById('dateFrom').value=c.dateFrom;
     if(c.dateTo)document.getElementById('dateTo').value=c.dateTo;
     rawStock=c.rawStock||[];rawCompras=c.rawCompras||[];rawVentas=c.rawVentas||[];rawBI=c.rawBI||[];
-    populateSelects();
-    if(c.temporada)document.getElementById('selTemporada').value=c.temporada;
     if(c.rubro)document.getElementById('selRubro').value=c.rubro;
-    if(c.marca)document.getElementById('selMarca').value=c.marca;
+    MS.Temporada=new Set(c.temporadas||[]);
+    MS.Marca=new Set(c.marcas||[]);
+    populateSelects();
     buildArticulosData();renderAll();
     const d=new Date(c.ts);
     document.getElementById('lastUpdate').textContent='📦 Cache local · '+d.toLocaleString('es-AR');
@@ -405,7 +433,47 @@ function getDateRange(){
   const t=document.getElementById('dateTo').value.split('-').map(Number);
   return{from:new Date(f[0],f[1]-1,f[2],0,0,0),to:new Date(t[0],t[1]-1,t[2],23,59,59)};
 }
-function getFilters(){return{temporada:document.getElementById('selTemporada').value,rubro:document.getElementById('selRubro').value,marca:document.getElementById('selMarca').value};}
+// ====== SELECTOR MÚLTIPLE ======
+// MS = valores tildados. MSOPTS = universo de opciones.
+// Convención: nada tildado (o todo tildado) = "Todas".
+const MS={Temporada:new Set(),Marca:new Set()};
+const MSOPTS={Temporada:[],Marca:[]};
+function msToggle(k){
+  const el=document.getElementById('ms'+k);
+  const abierto=el.classList.contains('open');
+  document.querySelectorAll('.ms').forEach(x=>x.classList.remove('open'));
+  if(!abierto)el.classList.add('open');
+}
+function msRender(k){
+  const list=document.getElementById('ms'+k+'List');
+  const opts=MSOPTS[k]||[];
+  list.innerHTML=opts.length
+    ? opts.map(v=>`<label class="ms-item"><input type="checkbox" value="${v}" ${MS[k].has(v)?'checked':''} onchange="msChange('${k}',this)">${v}</label>`).join('')
+    : '<div class="ms-empty">sin datos</div>';
+  msLabel(k);
+}
+function msChange(k,cb){
+  if(cb.checked)MS[k].add(cb.value);else MS[k].delete(cb.value);
+  msLabel(k);renderAll();
+}
+function msAll(k,on){
+  MS[k].clear();
+  if(on)(MSOPTS[k]||[]).forEach(v=>MS[k].add(v));
+  msRender(k);renderAll();
+}
+function msLabel(k){
+  const n=MS[k].size,tot=(MSOPTS[k]||[]).length;
+  const cont=document.getElementById('ms'+k);
+  const lbl=document.getElementById('ms'+k+'Lbl');
+  const todas=(n===0||n===tot);
+  lbl.textContent=todas?'Todas':(n===1?[...MS[k]][0]:n+' seleccionadas');
+  cont.classList.toggle('sel',!todas);
+}
+// [] = sin filtro (todas)
+function msSel(k){const n=MS[k].size,tot=(MSOPTS[k]||[]).length;return(n===0||n===tot)?[]:[...MS[k]];}
+function getFilters(){return{temporadas:msSel('Temporada'),marcas:msSel('Marca'),rubro:document.getElementById('selRubro').value};}
+// Cierra los paneles al hacer click afuera
+document.addEventListener('click',e=>{if(!e.target.closest('.ms'))document.querySelectorAll('.ms').forEach(x=>x.classList.remove('open'));});
 function parseArticulo(sku){
   if(!sku)return null;const p=sku.split('-');let idx=-1;
   for(let i=1;i<p.length;i++){if(/^[A-Z]\d{2}$/.test(p[i])){idx=i;break;}}
@@ -417,13 +485,19 @@ function populateSelects(){
   const temps=new Set(),marcas=new Set();
   rawVentas.forEach(r=>{if(r.temporada)temps.add(r.temporada);if(r.marca)marcas.add(r.marca);});
   rawBI.forEach(r=>{if(r.temporada)temps.add(r.temporada);if(r.marca)marcas.add(r.marca);});
-  const sT=document.getElementById('selTemporada'),sM=document.getElementById('selMarca');
-  const cT=sT.value,cM=sM.value;
-  sT.innerHTML='<option value="">Todas</option>'+[...temps].sort().reverse().map(t=>`<option value="${t}">${t}</option>`).join('');
-  sM.innerHTML='<option value="">Todas</option>'+[...marcas].sort().map(m=>`<option value="${m}">${m}</option>`).join('');
-  if(cT)sT.value=cT;if(cM)sM.value=cM;
+  // También desde el STOCK: hay temporadas/marcas con stock que nunca se vendieron
+  rawStock.forEach(r=>{
+    const i=parseArticulo(String(r.sku||'').trim().toUpperCase());
+    if(!i)return;if(i.temporada)temps.add(i.temporada);if(i.marca)marcas.add(i.marca);
+  });
+  MSOPTS.Temporada=[...temps].sort().reverse();
+  MSOPTS.Marca=[...marcas].sort();
+  // Descartar selecciones que ya no existen en los datos
+  [...MS.Temporada].forEach(v=>{if(MSOPTS.Temporada.indexOf(v)<0)MS.Temporada.delete(v);});
+  [...MS.Marca].forEach(v=>{if(MSOPTS.Marca.indexOf(v)<0)MS.Marca.delete(v);});
+  msRender('Temporada');msRender('Marca');
   const sTM=document.getElementById('tblMarca');const cTM=sTM.value;
-  sTM.innerHTML='<option value="">Todas</option>'+[...marcas].sort().map(m=>`<option value="${m}">${m}</option>`).join('');
+  sTM.innerHTML='<option value="">Todas</option>'+MSOPTS.Marca.map(m=>`<option value="${m}">${m}</option>`).join('');
   if(cTM)sTM.value=cTM;
 }
 
@@ -494,7 +568,7 @@ function buildArticulosData(){
   const{from,to}=getDateRange();const f=getFilters();
   buildBIMap();ppcCache.key=null;buildPPC();
   function ensure(a,info){if(!articulosData[a])articulosData[a]={stock:0,compras:0,vendido:0,ingreso:0,costo:0,sinCosto:0,valorStock:0,marca:info.marca,rubro:info.rubro,temporada:info.temporada};return articulosData[a];}
-  function pass(info){if(f.rubro&&info.rubro!==f.rubro)return false;if(f.temporada&&info.temporada!==f.temporada)return false;if(f.marca&&info.marca!==f.marca)return false;return true;}
+  function pass(info){if(f.rubro&&info.rubro!==f.rubro)return false;if(f.temporadas.length&&f.temporadas.indexOf(info.temporada)<0)return false;if(f.marcas.length&&f.marcas.indexOf(info.marca)<0)return false;return true;}
   rawStock.forEach(r=>{
     const sku=String(r.sku||'').trim().toUpperCase();const info=parseArticulo(sku);if(!info||!pass(info))return;
     const a=ensure(info.articulo,info);const units=parseNum(r.stk_local);a.stock+=units;
@@ -526,9 +600,9 @@ function filterVentas(rows){
   const{from,to}=getDateRange();const f=getFilters();
   return rows.filter(r=>{
     const d=parseDate(r.fecha);if(!d||d<from||d>to)return false;
-    if(f.temporada&&r.temporada!==f.temporada)return false;
+    if(f.temporadas.length&&f.temporadas.indexOf(r.temporada)<0)return false;
     if(f.rubro&&r.rubro!==f.rubro)return false;
-    if(f.marca&&r.marca!==f.marca)return false;
+    if(f.marcas.length&&f.marcas.indexOf(r.marca)<0)return false;
     return true;
   });
 }
@@ -848,6 +922,92 @@ document.addEventListener('click',e=>{const t=e.target.closest('[data-article]')
 function showLoading(t){document.getElementById('loadingText').textContent=t;document.getElementById('loadingOverlay').classList.add('visible');}
 function setLoading(t){document.getElementById('loadingText').textContent=t;}
 function hideLoading(){document.getElementById('loadingOverlay').classList.remove('visible');}
+// ====== PESTAÑA RESUMEN — dos tablas cruzadas marca (filas) x temporada (columnas) ======
+// Tabla 1: unidades en stock. Tabla 2: valorizado a costo PPC. Ambas con totales.
+function buildResumenSheet(det,fecha){
+  const marcas=[...new Set(det.map(d=>d.marca))].sort();
+  const temps =[...new Set(det.map(d=>d.temporada))].sort().reverse();
+  const U={},V={};
+  marcas.forEach(m=>{U[m]={};V[m]={};temps.forEach(t=>{U[m][t]=0;V[m][t]=0;});});
+  det.forEach(d=>{U[d.marca][d.temporada]+=d.units;V[d.marca][d.temporada]+=d.val;});
+  const r2=n=>Math.round(n*100)/100;
+  function tabla(MAP,redondear){
+    const out=[];
+    out.push(['MARCAS'].concat(temps).concat(['TOTAL']));
+    const colTot={};temps.forEach(t=>colTot[t]=0);let granTot=0;
+    marcas.forEach(m=>{
+      let fila=[m],tot=0;
+      temps.forEach(t=>{const v=MAP[m][t]||0;tot+=v;colTot[t]+=v;fila.push(redondear?r2(v):v);});
+      granTot+=tot;fila.push(redondear?r2(tot):tot);
+      out.push(fila);
+    });
+    let pie=['TOTAL'];
+    temps.forEach(t=>pie.push(redondear?r2(colTot[t]):colTot[t]));
+    pie.push(redondear?r2(granTot):granTot);
+    out.push(pie);
+    return out;
+  }
+  let aoa=[];
+  aoa.push(['STOCK — UNIDADES','','Fecha:',fecha]);
+  aoa=aoa.concat(tabla(U,false));
+  aoa.push([]);aoa.push([]);
+  aoa.push(['VALORIZADO — ARS a costo PPC']);
+  aoa=aoa.concat(tabla(V,true));
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols']=[{wch:16}].concat(temps.map(()=>({wch:14}))).concat([{wch:16}]);
+  return ws;
+}
+
+// ====== DESCARGA EXCEL — stock valorizado a costo PPC, una fila por SKU ======
+// Columnas: FECHA | MODELO | TEMPORADA | COLOR | TALLE | RUBRO | MARCA | PPC | VALORIZADO
+// Respeta los filtros activos (temporada / rubro / marca). Solo SKU con stock > 0.
+function descargarExcel(){
+  if(!rawStock.length){showError('Cargá los datos antes de descargar el Excel.');return;}
+  if(typeof XLSX==='undefined'){showError('No se pudo cargar la librería de Excel (revisá la conexión).');return;}
+  hideError();
+  buildBIMap();ppcCache.key=null;buildPPC();
+  const f=getFilters();
+  const hoy=new Date();
+  const fecha=hoy.toLocaleDateString('es-AR');
+  const HEAD=['FECHA','MODELO','TEMPORADA','COLOR','TALLE','RUBRO','MARCA','PPC','VALORIZADO'];
+  const rows=[];const det=[];let sinCosto=0;
+  rawStock.forEach(r=>{
+    const sku=String(r.sku||'').trim().toUpperCase();
+    const info=parseArticulo(sku);if(!info)return;
+    if(f.rubro&&info.rubro!==f.rubro)return;
+    if(f.temporadas.length&&f.temporadas.indexOf(info.temporada)<0)return;
+    if(f.marcas.length&&f.marcas.indexOf(info.marca)<0)return;
+    const units=parseNum(r.stk_local);
+    if(units<=0)return;
+    const c=getCost(sku);
+    if(c==null)sinCosto++;
+    det.push({marca:info.marca||'(sin marca)',temporada:info.temporada||'(sin temp.)',units:units,val:(c!=null?c*units:0)});
+    rows.push({
+      'FECHA':fecha,
+      'MODELO':info.articulo,
+      'TEMPORADA':info.temporada,
+      'COLOR':info.color,
+      'TALLE':info.talle,
+      'RUBRO':info.rubro,
+      'MARCA':info.marca,
+      'PPC':c!=null?Math.round(c*100)/100:'',
+      'VALORIZADO':c!=null?Math.round(c*units*100)/100:''
+    });
+  });
+  if(!rows.length){showError('No hay SKU con stock para exportar con los filtros actuales.');return;}
+  const ws=XLSX.utils.json_to_sheet(rows,{header:HEAD});
+  ws['!cols']=[{wch:11},{wch:18},{wch:11},{wch:10},{wch:7},{wch:7},{wch:8},{wch:12},{wch:14}];
+  ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows.length,c:HEAD.length-1}})};
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Stock Valorizado');
+  XLSX.utils.book_append_sheet(wb,buildResumenSheet(det,fecha),'Resumen');
+  const p=n=>String(n).padStart(2,'0');
+  const stamp=hoy.getFullYear()+'_'+p(hoy.getMonth()+1)+'_'+p(hoy.getDate());
+  XLSX.writeFile(wb,'STOCK_VALORIZADO_'+stamp+'.xlsx');
+  const total=rows.reduce((s,r)=>s+(Number(r.VALORIZADO)||0),0);
+  setStatus('Excel: '+fmtN(rows.length)+' SKU · '+fmtARS(total)+(sinCosto?' · '+fmtN(sinCosto)+' sin costo':''),true);
+}
+
 function showError(m){const el=document.getElementById('errorMsg');el.textContent='⚠ '+m;el.style.display='block';}
 function hideError(){document.getElementById('errorMsg').style.display='none';}
 
