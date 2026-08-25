@@ -969,7 +969,7 @@ function descargarExcel(){
   const f=getFilters();
   const hoy=new Date();
   const fecha=hoy.toLocaleDateString('es-AR');
-  const HEAD=['FECHA','MODELO','TEMPORADA','COLOR','TALLE','RUBRO','MARCA','PPC','VALORIZADO'];
+  const HEAD=['FECHA','MODELO','TEMPORADA','COLOR','TALLE','RUBRO','MARCA','STOCK','PPC','VALORIZADO'];
   const rows=[];const det=[];let sinCosto=0;
   rawStock.forEach(r=>{
     const sku=String(r.sku||'').trim().toUpperCase();
@@ -990,13 +990,14 @@ function descargarExcel(){
       'TALLE':info.talle,
       'RUBRO':info.rubro,
       'MARCA':info.marca,
+      'STOCK':units,
       'PPC':c!=null?Math.round(c*100)/100:'',
       'VALORIZADO':c!=null?Math.round(c*units*100)/100:''
     });
   });
   if(!rows.length){showError('No hay SKU con stock para exportar con los filtros actuales.');return;}
   const ws=XLSX.utils.json_to_sheet(rows,{header:HEAD});
-  ws['!cols']=[{wch:11},{wch:18},{wch:11},{wch:10},{wch:7},{wch:7},{wch:8},{wch:12},{wch:14}];
+  ws['!cols']=[{wch:11},{wch:18},{wch:11},{wch:10},{wch:7},{wch:7},{wch:8},{wch:8},{wch:12},{wch:14}];
   ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows.length,c:HEAD.length-1}})};
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Stock Valorizado');
