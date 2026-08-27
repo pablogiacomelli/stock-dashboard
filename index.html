@@ -45,14 +45,20 @@ select.date-input{appearance:auto}
 .tab-btn{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--font-mono);font-size:12px;letter-spacing:.05em;padding:12px 18px;cursor:pointer;transition:all .15s}
 .tab-btn:hover{color:var(--text)}
 .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
-/* ===== TABLA CRUZADA ===== */
-.pivot{font-size:11px}
-.pivot th{text-align:right;white-space:nowrap}
-.pivot th:first-child{text-align:left}
-.pivot td{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-.pivot td:first-child{text-align:left;color:var(--accent);font-family:var(--font-display);font-size:12px}
-.pivot .tot-row td{border-top:1px solid var(--border2);font-weight:500;color:var(--accent)}
-.pivot .tot-col{color:var(--accent);font-weight:500}
+/* ===== TABLA CRUZADA =====
+   width:auto + table-layout:fixed + colgroup = los anchos NO dependen de
+   cuántas columnas haya, así no se corre nada al cambiar los filtros. */
+.pivot-wrap{overflow-x:auto;scrollbar-gutter:stable}
+.pivot{font-size:11px;width:auto;table-layout:fixed;margin-top:14px}
+.pivot th{text-align:right;white-space:nowrap;padding:8px 12px;position:sticky;top:0;background:var(--surface);z-index:2}
+.pivot th:first-child{text-align:left;left:0;z-index:3}
+.pivot td{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;padding:8px 12px;overflow:hidden;text-overflow:ellipsis}
+.pivot td:first-child{text-align:left;color:var(--accent);font-family:var(--font-display);font-size:12px;position:sticky;left:0;background:var(--surface);z-index:1}
+.pivot tr:hover td{background:var(--surface2)}
+.pivot tr:hover td:first-child{background:var(--surface2)}
+.pivot .tot-row td{border-top:1px solid var(--border2);font-weight:500;color:var(--accent);background:var(--surface)}
+.pivot .tot-col{color:var(--accent);font-weight:500;border-left:1px solid var(--border)}
+.pivot th.tot-col{border-left:1px solid var(--border)}
 .pivot .zero{color:var(--muted2)}
 .error-msg{display:none;background:#e0706018;border:1px solid #e0706040;color:var(--red);padding:12px 16px;font-size:12px;margin:0 40px 20px;letter-spacing:.05em;font-family:var(--font-mono)}
 main{padding:28px 40px}
@@ -303,13 +309,13 @@ footer{padding:20px 40px;border-top:1px solid var(--border);font-size:10px;color
     <div class="chart-header">
       <div><div class="chart-title">Stock por Marca y Temporada — Unidades</div><div class="chart-subtitle">Filas: marcas · Columnas: temporadas · Respeta los filtros activos</div></div>
     </div>
-    <div style="overflow-x:auto"><table class="data-table pivot" id="pivotU"></table></div>
+    <div class="pivot-wrap"><table class="data-table pivot" id="pivotU"></table></div>
   </div>
   <div class="table-card">
     <div class="chart-header">
       <div><div class="chart-title">Stock Valorizado por Marca y Temporada — ARS</div><div class="chart-subtitle">Valuado a costo PPC</div></div>
     </div>
-    <div style="overflow-x:auto"><table class="data-table pivot" id="pivotV"></table></div>
+    <div class="pivot-wrap"><table class="data-table pivot" id="pivotV"></table></div>
   </div>
 </main>
 
@@ -1030,8 +1036,11 @@ function renderPivots(){
   }
   const{U,V,marcas,temps}=aggMarcaTemp();
   function pinta(MAP,el,money){
+    // Anchos fijos: la columna de datos es más ancha en la tabla de pesos
+    const wMarca=150,wDato=money?140:100,wTot=money?160:110;
     const colTot={};temps.forEach(t=>colTot[t]=0);let gran=0;
-    let h='<thead><tr><th>MARCA</th>'+temps.map(t=>`<th>${t}</th>`).join('')+'<th>TOTAL</th></tr></thead><tbody>';
+    let h=`<colgroup><col style="width:${wMarca}px">`+temps.map(()=>`<col style="width:${wDato}px">`).join('')+`<col style="width:${wTot}px"></colgroup>`;
+    h+='<thead><tr><th>MARCA</th>'+temps.map(t=>`<th>${t}</th>`).join('')+'<th class="tot-col">TOTAL</th></tr></thead><tbody>';
     marcas.forEach(m=>{
       let tot=0;
       let celdas=temps.map(t=>{
@@ -1041,7 +1050,7 @@ function renderPivots(){
       gran+=tot;
       h+=`<tr><td>${m}</td>${celdas}<td class="tot-col">${money?fmtARS(tot):fmtN(tot)}</td></tr>`;
     });
-    h+=`<tr class="tot-row"><td>TOTAL</td>${temps.map(t=>`<td>${money?fmtARS(colTot[t]):fmtN(colTot[t])}</td>`).join('')}<td>${money?fmtARS(gran):fmtN(gran)}</td></tr>`;
+    h+=`<tr class="tot-row"><td>TOTAL</td>${temps.map(t=>`<td>${money?fmtARS(colTot[t]):fmtN(colTot[t])}</td>`).join('')}<td class="tot-col">${money?fmtARS(gran):fmtN(gran)}</td></tr>`;
     h+='</tbody>';
     document.getElementById(el).innerHTML=h;
   }
