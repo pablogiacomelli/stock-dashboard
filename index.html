@@ -48,17 +48,20 @@ select.date-input{appearance:auto}
 /* ===== TABLA CRUZADA =====
    width:auto + table-layout:fixed + colgroup = los anchos NO dependen de
    cuántas columnas haya, así no se corre nada al cambiar los filtros. */
-.pivot-wrap{overflow-x:auto;scrollbar-gutter:stable}
-.pivot{font-size:11px;width:auto;table-layout:fixed;margin-top:14px}
-.pivot th{text-align:right;white-space:nowrap;padding:8px 12px;position:sticky;top:0;background:var(--surface);z-index:2}
-.pivot th:first-child{text-align:left;left:0;z-index:3}
-.pivot td{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;padding:8px 12px;overflow:hidden;text-overflow:ellipsis}
-.pivot td:first-child{text-align:left;color:var(--accent);font-family:var(--font-display);font-size:12px;position:sticky;left:0;background:var(--surface);z-index:1}
-.pivot tr:hover td{background:var(--surface2)}
-.pivot tr:hover td:first-child{background:var(--surface2)}
-.pivot .tot-row td{border-top:1px solid var(--border2);font-weight:500;color:var(--accent);background:var(--surface)}
+/* ===== TABLA CRUZADA (marca x temporada) =====
+   NO usa .data-table a propósito: aquella define width:100% y hacía que las
+   columnas se estiraran, cambiando de ancho cada vez que un filtro cambiaba
+   la cantidad de temporadas. Acá los anchos son fijos vía <colgroup>, así la
+   tabla mide siempre lo mismo por columna y nada se corre al filtrar. */
+.pivot-wrap{overflow-x:auto;scrollbar-gutter:stable;margin-top:14px}
+.pivot{border-collapse:collapse;font-family:var(--font-mono);font-size:11px;width:auto;table-layout:fixed}
+.pivot th{text-align:right;white-space:nowrap;padding:8px 12px;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted2);font-weight:400;border-bottom:1px solid var(--border)}
+.pivot th:first-child{text-align:left}
+.pivot td{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;padding:8px 12px;color:var(--text);border-bottom:1px solid var(--border);overflow:hidden;text-overflow:ellipsis}
+.pivot td:first-child{text-align:left;color:var(--accent);font-family:var(--font-display);font-size:12px}
+.pivot tbody tr:hover td{background:var(--surface2)}
+.pivot .tot-row td{border-top:1px solid var(--border2);border-bottom:none;font-weight:500;color:var(--accent)}
 .pivot .tot-col{color:var(--accent);font-weight:500;border-left:1px solid var(--border)}
-.pivot th.tot-col{border-left:1px solid var(--border)}
 .pivot .zero{color:var(--muted2)}
 .error-msg{display:none;background:#e0706018;border:1px solid #e0706040;color:var(--red);padding:12px 16px;font-size:12px;margin:0 40px 20px;letter-spacing:.05em;font-family:var(--font-mono)}
 main{padding:28px 40px}
@@ -309,13 +312,13 @@ footer{padding:20px 40px;border-top:1px solid var(--border);font-size:10px;color
     <div class="chart-header">
       <div><div class="chart-title">Stock por Marca y Temporada — Unidades</div><div class="chart-subtitle">Filas: marcas · Columnas: temporadas · Respeta los filtros activos</div></div>
     </div>
-    <div class="pivot-wrap"><table class="data-table pivot" id="pivotU"></table></div>
+    <div class="pivot-wrap"><table class="pivot" id="pivotU"></table></div>
   </div>
   <div class="table-card">
     <div class="chart-header">
       <div><div class="chart-title">Stock Valorizado por Marca y Temporada — ARS</div><div class="chart-subtitle">Valuado a costo PPC</div></div>
     </div>
-    <div class="pivot-wrap"><table class="data-table pivot" id="pivotV"></table></div>
+    <div class="pivot-wrap"><table class="pivot" id="pivotV"></table></div>
   </div>
 </main>
 
