@@ -40,6 +40,20 @@ select.date-input{appearance:auto}
 .ms-item:hover{background:var(--surface2)}
 .ms-item input{cursor:pointer;accent-color:#d4a853}
 .ms-empty{color:var(--muted2);font-size:11px;font-family:var(--font-mono);padding:6px}
+/* ===== PESTAÑAS ===== */
+.tabs-bar{display:flex;gap:2px;padding:0 40px;border-bottom:1px solid var(--border);background:var(--bg)}
+.tab-btn{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--font-mono);font-size:12px;letter-spacing:.05em;padding:12px 18px;cursor:pointer;transition:all .15s}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+/* ===== TABLA CRUZADA ===== */
+.pivot{font-size:11px}
+.pivot th{text-align:right;white-space:nowrap}
+.pivot th:first-child{text-align:left}
+.pivot td{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pivot td:first-child{text-align:left;color:var(--accent);font-family:var(--font-display);font-size:12px}
+.pivot .tot-row td{border-top:1px solid var(--border2);font-weight:500;color:var(--accent)}
+.pivot .tot-col{color:var(--accent);font-weight:500}
+.pivot .zero{color:var(--muted2)}
 .error-msg{display:none;background:#e0706018;border:1px solid #e0706040;color:var(--red);padding:12px 16px;font-size:12px;margin:0 40px 20px;letter-spacing:.05em;font-family:var(--font-mono)}
 main{padding:28px 40px}
 .scorecards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:28px}
@@ -183,7 +197,12 @@ footer{padding:20px 40px;border-top:1px solid var(--border);font-size:10px;color
 
 <div class="error-msg" id="errorMsg"></div>
 
-<main>
+<div class="tabs-bar">
+  <button class="tab-btn active" id="tabPanel" onclick="setView('panel')">📊 Panel</button>
+  <button class="tab-btn" id="tabResumen" onclick="setView('resumen')">🗓 Resumen por Temporada</button>
+</div>
+
+<main id="viewPanel">
   <div class="scorecards">
     <div class="scorecard"><div class="sc-label">Artículos con Stock</div><div class="sc-value" id="scArts">—</div><div class="sc-sub">artículos distintos</div></div>
     <div class="scorecard"><div class="sc-label">Stock Total</div><div class="sc-value" id="scStock">—</div><div class="sc-sub">unidades en sistema</div></div>
@@ -192,7 +211,7 @@ footer{padding:20px 40px;border-top:1px solid var(--border);font-size:10px;color
     <div class="scorecard"><div class="sc-label">Compras Período</div><div class="sc-value" id="scCompras">—</div><div class="sc-sub">unidades ingresadas</div></div>
     <div class="scorecard"><div class="sc-label">Velocidad Promedio</div><div class="sc-value" id="scVel">—</div><div class="sc-sub">unidades / semana</div></div>
     <div class="scorecard"><div class="sc-label">Stock Valorizado</div><div class="sc-value" id="scValStock">—</div><div class="sc-sub">valor a costo (PPC)</div></div>
-    <div class="scorecard"><div class="sc-label">Cobertura de Costeo</div><div class="sc-value" id="scCob">—</div><div class="sc-sub" id="scCobSub">u vendidas con costo</div></div>
+    <div class="scorecard" style="cursor:pointer" onclick="openSinCosto()" title="Click para ver qué SKU no tienen costo cargado"><div class="sc-label">Cobertura de Costeo 🔍</div><div class="sc-value" id="scCob">—</div><div class="sc-sub" id="scCobSub">u vendidas con costo</div></div>
   </div>
 
   <div class="chart-card chart-full" style="margin-bottom:18px">
@@ -279,6 +298,44 @@ footer{padding:20px 40px;border-top:1px solid var(--border);font-size:10px;color
   </div>
 </main>
 
+<main id="viewResumen" style="display:none">
+  <div class="table-card">
+    <div class="chart-header">
+      <div><div class="chart-title">Stock por Marca y Temporada — Unidades</div><div class="chart-subtitle">Filas: marcas · Columnas: temporadas · Respeta los filtros activos</div></div>
+    </div>
+    <div style="overflow-x:auto"><table class="data-table pivot" id="pivotU"></table></div>
+  </div>
+  <div class="table-card">
+    <div class="chart-header">
+      <div><div class="chart-title">Stock Valorizado por Marca y Temporada — ARS</div><div class="chart-subtitle">Valuado a costo PPC</div></div>
+    </div>
+    <div style="overflow-x:auto"><table class="data-table pivot" id="pivotV"></table></div>
+  </div>
+</main>
+
+<!-- ===== MODAL SKU SIN COSTO ===== -->
+<div class="article-modal" id="costoModal" aria-hidden="true">
+  <div class="am-backdrop" onclick="closeSinCosto()"></div>
+  <div class="am-panel">
+    <div class="am-header">
+      <div>
+        <div class="am-eyebrow">Calidad del costeo</div>
+        <h2 class="am-title">SKU <em>sin costo</em></h2>
+      </div>
+      <button class="am-close" onclick="closeSinCosto()" aria-label="Cerrar">×</button>
+    </div>
+    <div class="am-kpis" id="scKpis"></div>
+    <div class="am-section">
+      <h3>Vendidos sin costo asignado</h3>
+      <div id="scVendidos"></div>
+    </div>
+    <div class="am-section">
+      <h3>En stock sin costo asignado</h3>
+      <div id="scEnStock"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ===== MODAL DETALLE ARTÍCULO ===== -->
 <div class="article-modal" id="articleModal" aria-hidden="true">
   <div class="am-backdrop" onclick="closeArticleModal()"></div>
@@ -320,7 +377,7 @@ const WEBHOOK_DATA='https://pgiacomelli2506.app.n8n.cloud/webhook/stock-data';
 const WEBHOOK_AI='https://pgiacomelli2506.app.n8n.cloud/webhook/stock-ai-analysis';
 const API_KEY='mahra-stk-9F3K2P7Q-2026';
 
-let rawStock=[],rawCompras=[],rawVentas=[],rawBI=[];
+let rawStock=[],rawCompras=[],rawVentas=[],rawBI=[],rawCostos=[];
 let articulosData={};
 let charts={};
 let ventasAgrup='dia';
@@ -340,7 +397,7 @@ function setStatus(label,ok){
 
 function saveCache(){
   try{
-    const payload={ts:Date.now(),dateFrom:document.getElementById('dateFrom').value,dateTo:document.getElementById('dateTo').value,temporadas:[...MS.Temporada],rubro:document.getElementById('selRubro').value,marcas:[...MS.Marca],rawStock,rawCompras,rawVentas,rawBI};
+    const payload={ts:Date.now(),dateFrom:document.getElementById('dateFrom').value,dateTo:document.getElementById('dateTo').value,temporadas:[...MS.Temporada],rubro:document.getElementById('selRubro').value,marcas:[...MS.Marca],rawStock,rawCompras,rawVentas,rawBI,rawCostos};
     const json=JSON.stringify(payload);
     if(json.length>4500000){console.warn('[cache] datos muy grandes ('+(json.length/1e6).toFixed(1)+'MB), salteado');return;}
     localStorage.setItem(CACHE_KEY,json);
@@ -356,7 +413,7 @@ function loadCache(){
     if(Date.now()-c.ts>CACHE_TTL_MS){localStorage.removeItem(CACHE_KEY);return false;}
     if(c.dateFrom)document.getElementById('dateFrom').value=c.dateFrom;
     if(c.dateTo)document.getElementById('dateTo').value=c.dateTo;
-    rawStock=c.rawStock||[];rawCompras=c.rawCompras||[];rawVentas=c.rawVentas||[];rawBI=c.rawBI||[];
+    rawStock=c.rawStock||[];rawCompras=c.rawCompras||[];rawVentas=c.rawVentas||[];rawBI=c.rawBI||[];rawCostos=c.rawCostos||[];
     if(c.rubro)document.getElementById('selRubro').value=c.rubro;
     MS.Temporada=new Set(c.temporadas||[]);
     MS.Marca=new Set(c.marcas||[]);
@@ -418,7 +475,7 @@ async function fetchStockData(){
   if(!resp.ok)throw new Error('Webhook HTTP '+resp.status+(txt?' · '+txt.slice(0,150):''));
   let data;try{data=JSON.parse(txt);}catch{throw new Error('Webhook respuesta no JSON: '+txt.slice(0,150));}
   if(data.error)throw new Error(data.error);
-  return {stock:data.stock||[],compras:data.compras||[],ventas:data.ventas||[],bi:data.bi||[]};
+  return {stock:data.stock||[],compras:data.compras||[],ventas:data.ventas||[],bi:data.bi||[],costos:data.costos||[]};
 }
 
 function parseNum(v){if(typeof v==='number')return v;let s=String(v||'').replace(/^[^0-9-]/,'').trim();if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');return parseFloat(s)||0;}
@@ -507,7 +564,7 @@ async function loadAllData(){
   try{
     setLoading('Leyendo Sheets server-side...');
     const data=await fetchStockData();
-    rawStock=data.stock;rawCompras=data.compras;rawVentas=data.ventas;rawBI=data.bi;
+    rawStock=data.stock;rawCompras=data.compras;rawVentas=data.ventas;rawBI=data.bi;rawCostos=data.costos||[];
     setLoading('Procesando costos PPC...');populateSelects();buildArticulosData();renderAll();
     document.getElementById('lastUpdate').textContent='⚡ En vivo · '+new Date().toLocaleString('es-AR');
     const cb=document.getElementById('cacheBanner');if(cb)cb.remove();
@@ -554,19 +611,32 @@ function buildBIMap(){
   rawBI.forEach(r=>{const sku=String(r.sku||'').toUpperCase();if(!sku)return;const ct=parseNum(r.costo_total||r.costo||0);const qty=parseNum(r.cantidad||1);if(qty>0&&ct>0){if(!biCostBySku[sku])biCostBySku[sku]={total:0,qty:0};biCostBySku[sku].total+=ct;biCostBySku[sku].qty+=qty;}});
   for(const s in biCostBySku){const v=biCostBySku[s];biCostBySku[s]=v.qty>0?v.total/v.qty:null;}
 }
-// costo unitario por SKU: PPC del SKU → PPC del artículo → BI → null
+// Costo cargado a mano / derivado del remito del sistema viejo.
+// Clave: ARTICULO + '|' + TEMPORADA. Es el ÚLTIMO escalón: solo rellena huecos.
+let costoArtTemp={};
+function buildCostosMap(){
+  costoArtTemp={};
+  rawCostos.forEach(r=>{
+    const a=String(r.ARTICULO||r.articulo||'').trim().toUpperCase();
+    const t=String(r.TEMPORADA||r.temporada||'').trim().toUpperCase();
+    const c=parseNum(r.COSTO||r.costo||0);
+    if(a&&t&&c>0)costoArtTemp[a+'|'+t]=c;
+  });
+}
+// costo unitario por SKU: PPC del SKU → PPC del artículo → BI → COSTOS_ART_TEMP → null
 function getCost(sku){
   const SKU=String(sku||'').toUpperCase();const{bySku,byArt}=buildPPC();
   if(bySku[SKU]&&bySku[SKU].value!=null)return bySku[SKU].value;
   const info=parseArticulo(SKU);if(info&&byArt[info.articulo]&&byArt[info.articulo].value!=null)return byArt[info.articulo].value;
   if(biCostBySku[SKU]!=null)return biCostBySku[SKU];
+  if(info){const v=costoArtTemp[info.articulo+'|'+info.temporada];if(v!=null)return v;}
   return null;
 }
 
 function buildArticulosData(){
   articulosData={};
   const{from,to}=getDateRange();const f=getFilters();
-  buildBIMap();ppcCache.key=null;buildPPC();
+  buildBIMap();buildCostosMap();ppcCache.key=null;buildPPC();
   function ensure(a,info){if(!articulosData[a])articulosData[a]={stock:0,compras:0,vendido:0,ingreso:0,costo:0,sinCosto:0,valorStock:0,marca:info.marca,rubro:info.rubro,temporada:info.temporada};return articulosData[a];}
   function pass(info){if(f.rubro&&info.rubro!==f.rubro)return false;if(f.temporadas.length&&f.temporadas.indexOf(info.temporada)<0)return false;if(f.marcas.length&&f.marcas.indexOf(info.marca)<0)return false;return true;}
   rawStock.forEach(r=>{
@@ -612,6 +682,9 @@ function renderAll(){
   renderScorecards(arts);renderVentasChart(filterVentas(rawVentas));
   renderParetoChart(arts);renderCoberturaChart(arts);renderRotacionChart(arts);renderValStockMarca(arts);
   renderAlertas(arts);renderTablaVelocidad();
+  // Si la pestaña Resumen está abierta, refrescarla también
+  const vr=document.getElementById('viewResumen');
+  if(vr&&vr.style.display!=='none')renderPivots();
 }
 
 function renderScorecards(arts){
@@ -916,12 +989,123 @@ function closeArticleModal(){
   if(charts.modalMonthly){charts.modalMonthly.destroy();delete charts.modalMonthly;}
 }
 
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeArticleModal();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeArticleModal();closeSinCosto();}});
 document.addEventListener('click',e=>{const t=e.target.closest('[data-article]');if(t&&t.dataset.article)openArticleModal(t.dataset.article);});
 
 function showLoading(t){document.getElementById('loadingText').textContent=t;document.getElementById('loadingOverlay').classList.add('visible');}
 function setLoading(t){document.getElementById('loadingText').textContent=t;}
 function hideLoading(){document.getElementById('loadingOverlay').classList.remove('visible');}
+// ====== PESTAÑAS + TABLAS CRUZADAS EN PANTALLA ======
+function setView(v){
+  const esPanel=(v==='panel');
+  document.getElementById('viewPanel').style.display=esPanel?'':'none';
+  document.getElementById('viewResumen').style.display=esPanel?'none':'';
+  document.getElementById('tabPanel').classList.toggle('active',esPanel);
+  document.getElementById('tabResumen').classList.toggle('active',!esPanel);
+  if(!esPanel)renderPivots();
+}
+// Agrega el stock por marca x temporada a nivel SKU (misma fuente que el Excel)
+function aggMarcaTemp(){
+  buildBIMap();buildCostosMap();ppcCache.key=null;buildPPC();
+  const f=getFilters();
+  const U={},V={};const marcas=new Set(),temps=new Set();
+  rawStock.forEach(r=>{
+    const sku=String(r.sku||'').trim().toUpperCase();const i=parseArticulo(sku);if(!i)return;
+    if(f.rubro&&i.rubro!==f.rubro)return;
+    if(f.temporadas.length&&f.temporadas.indexOf(i.temporada)<0)return;
+    if(f.marcas.length&&f.marcas.indexOf(i.marca)<0)return;
+    const m=i.marca||'(sin marca)',t=i.temporada||'(sin temp.)';
+    const u=parseNum(r.stk_local);const c=getCost(sku);
+    marcas.add(m);temps.add(t);
+    if(!U[m])U[m]={};if(!V[m])V[m]={};
+    U[m][t]=(U[m][t]||0)+u;
+    V[m][t]=(V[m][t]||0)+(c!=null?c*u:0);
+  });
+  return{U,V,marcas:[...marcas].sort(),temps:[...temps].sort().reverse()};
+}
+function renderPivots(){
+  if(!rawStock.length){
+    document.getElementById('pivotU').innerHTML='<tbody><tr><td class="empty-state">Cargá los datos</td></tr></tbody>';
+    document.getElementById('pivotV').innerHTML='';return;
+  }
+  const{U,V,marcas,temps}=aggMarcaTemp();
+  function pinta(MAP,el,money){
+    const colTot={};temps.forEach(t=>colTot[t]=0);let gran=0;
+    let h='<thead><tr><th>MARCA</th>'+temps.map(t=>`<th>${t}</th>`).join('')+'<th>TOTAL</th></tr></thead><tbody>';
+    marcas.forEach(m=>{
+      let tot=0;
+      let celdas=temps.map(t=>{
+        const v=(MAP[m]&&MAP[m][t])||0;tot+=v;colTot[t]+=v;
+        return `<td class="${v?'':'zero'}">${v?(money?fmtARS(v):fmtN(v)):'·'}</td>`;
+      }).join('');
+      gran+=tot;
+      h+=`<tr><td>${m}</td>${celdas}<td class="tot-col">${money?fmtARS(tot):fmtN(tot)}</td></tr>`;
+    });
+    h+=`<tr class="tot-row"><td>TOTAL</td>${temps.map(t=>`<td>${money?fmtARS(colTot[t]):fmtN(colTot[t])}</td>`).join('')}<td>${money?fmtARS(gran):fmtN(gran)}</td></tr>`;
+    h+='</tbody>';
+    document.getElementById(el).innerHTML=h;
+  }
+  pinta(U,'pivotU',false);
+  pinta(V,'pivotV',true);
+}
+
+// ====== MODAL: QUÉ SKU NO TIENEN COSTO ======
+// Un SKU "sin costo" es el que no encontró PPC (ni por SKU, ni por artículo) ni costo en BI.
+function openSinCosto(){
+  if(!rawStock.length){showError('Cargá los datos primero.');return;}
+  buildBIMap();buildCostosMap();ppcCache.key=null;buildPPC();
+  const{from,to}=getDateRange();const f=getFilters();
+  function pass(i){
+    if(f.rubro&&i.rubro!==f.rubro)return false;
+    if(f.temporadas.length&&f.temporadas.indexOf(i.temporada)<0)return false;
+    if(f.marcas.length&&f.marcas.indexOf(i.marca)<0)return false;
+    return true;
+  }
+  // 1) Vendidos sin costo (impacta el margen)
+  const vend={};let uVend=0,uVendSin=0;
+  rawVentas.forEach(r=>{
+    const sku=String(r.sku||'').trim().toUpperCase();const i=parseArticulo(sku);if(!i||!pass(i))return;
+    const d=parseDate(r.fecha);if(!d||d<from||d>to)return;
+    const cant=parseNum(r.cantidad);uVend+=cant;
+    if(getCost(sku)!=null)return;
+    uVendSin+=cant;
+    if(!vend[sku])vend[sku]={sku,art:i.articulo,temp:i.temporada,marca:i.marca,u:0,fact:0};
+    vend[sku].u+=cant;vend[sku].fact+=parseNum(r.total);
+  });
+  // 2) En stock sin costo (impacta el valorizado)
+  const stk={};let uStk=0,uStkSin=0;
+  rawStock.forEach(r=>{
+    const sku=String(r.sku||'').trim().toUpperCase();const i=parseArticulo(sku);if(!i||!pass(i))return;
+    const u=parseNum(r.stk_local);uStk+=u;
+    if(u<=0)return;
+    if(getCost(sku)!=null)return;
+    uStkSin+=u;
+    if(!stk[sku])stk[sku]={sku,art:i.articulo,temp:i.temporada,marca:i.marca,u:0};
+    stk[sku].u+=u;
+  });
+  const lv=Object.values(vend).sort((a,b)=>b.u-a.u);
+  const ls=Object.values(stk).sort((a,b)=>b.u-a.u);
+  const covV=uVend>0?((uVend-uVendSin)/uVend*100):100;
+  const covS=uStk>0?((uStk-uStkSin)/uStk*100):100;
+  document.getElementById('scKpis').innerHTML=`
+    <div class="am-kpi"><div class="am-kpi-label">Cobertura ventas</div><div class="am-kpi-value">${covV.toFixed(0)}%</div><div class="am-kpi-sub">${fmtN(uVendSin)} u sin costo</div></div>
+    <div class="am-kpi"><div class="am-kpi-label">Cobertura stock</div><div class="am-kpi-value">${covS.toFixed(0)}%</div><div class="am-kpi-sub">${fmtN(uStkSin)} u sin costo</div></div>
+    <div class="am-kpi"><div class="am-kpi-label">SKU a resolver</div><div class="am-kpi-value">${fmtN(new Set(lv.map(x=>x.sku).concat(ls.map(x=>x.sku))).size)}</div><div class="am-kpi-sub">distintos</div></div>`;
+  const tabla=(list,extra)=>list.length?`
+    <table class="am-table"><thead><tr><th>SKU</th><th>Artículo</th><th>Temp.</th><th>Marca</th><th class="td-num">${extra?'Vend.':'Stock'}</th>${extra?'<th class="td-num">Facturado</th>':''}</tr></thead>
+    <tbody>${list.slice(0,80).map(x=>`<tr><td style="color:var(--accent)">${x.sku}</td><td>${x.art}</td><td>${x.temp}</td><td>${x.marca}</td><td class="td-num">${fmtN(x.u)}</td>${extra?'<td class="td-num">'+fmtARS(x.fact)+'</td>':''}</tr>`).join('')}</tbody></table>
+    ${list.length>80?'<p class="am-empty">… y '+fmtN(list.length-80)+' más</p>':''}`
+    :'<p class="am-empty">Ninguno ✓ — todo costeado</p>';
+  document.getElementById('scVendidos').innerHTML=tabla(lv,true);
+  document.getElementById('scEnStock').innerHTML=tabla(ls,false);
+  document.getElementById('costoModal').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeSinCosto(){
+  document.getElementById('costoModal').classList.remove('open');
+  document.body.style.overflow='';
+}
+
 // ====== PESTAÑA RESUMEN — dos tablas cruzadas marca (filas) x temporada (columnas) ======
 // Tabla 1: unidades en stock. Tabla 2: valorizado a costo PPC. Ambas con totales.
 function buildResumenSheet(det,fecha){
@@ -965,7 +1149,7 @@ function descargarExcel(){
   if(!rawStock.length){showError('Cargá los datos antes de descargar el Excel.');return;}
   if(typeof XLSX==='undefined'){showError('No se pudo cargar la librería de Excel (revisá la conexión).');return;}
   hideError();
-  buildBIMap();ppcCache.key=null;buildPPC();
+  buildBIMap();buildCostosMap();ppcCache.key=null;buildPPC();
   const f=getFilters();
   const hoy=new Date();
   const fecha=hoy.toLocaleDateString('es-AR');
@@ -978,7 +1162,7 @@ function descargarExcel(){
     if(f.temporadas.length&&f.temporadas.indexOf(info.temporada)<0)return;
     if(f.marcas.length&&f.marcas.indexOf(info.marca)<0)return;
     const units=parseNum(r.stk_local);
-    if(units<=0)return;
+    // NO se excluyen las filas en cero: el Excel debe ser espejo exacto del dashboard.
     const c=getCost(sku);
     if(c==null)sinCosto++;
     det.push({marca:info.marca||'(sin marca)',temporada:info.temporada||'(sin temp.)',units:units,val:(c!=null?c*units:0)});
