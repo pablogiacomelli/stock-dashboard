@@ -90,6 +90,12 @@ main{padding:28px 40px}
 .data-table tr:last-child td{border-bottom:none}.data-table tr:hover td{background:var(--surface2)}
 .td-num{text-align:right;font-variant-numeric:tabular-nums}
 .th-sort{cursor:pointer;user-select:none;white-space:nowrap;transition:color .12s}.th-sort:hover{color:var(--accent)}.th-sort.active{color:var(--accent)}.sort-arrow{font-size:8px;opacity:.85}
+.art-inp{background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--font-mono);font-size:11px;padding:3px 5px;width:64px;outline:none;text-align:right;border-radius:2px}
+.art-inp:focus{border-color:var(--accent)}
+.art-inp::placeholder{color:var(--muted2);opacity:.7}
+.art-inp:disabled{opacity:.35;cursor:not-allowed}
+.art-reset{color:var(--accent);cursor:pointer;font-size:13px;margin-left:5px;user-select:none}
+.art-reset:hover{opacity:.6}
 .col-filter{background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--font-mono);font-size:10px;padding:2px 4px;margin-top:5px;cursor:pointer;outline:none;display:block;text-transform:none;letter-spacing:0}
 .pos{color:var(--green)}.neg{color:var(--red)}.dim{color:var(--muted2)}
 .semaforo{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
@@ -209,6 +215,7 @@ footer{padding:20px 40px;border-top:1px solid var(--border);font-size:10px;color
 <div class="tabs-bar">
   <button class="tab-btn active" id="tabPanel" onclick="setView('panel')">📊 Panel</button>
   <button class="tab-btn" id="tabResumen" onclick="setView('resumen')">🗓 Resumen por Temporada</button>
+  <button class="tab-btn" id="tabArt" onclick="setView('art')">🎯 Análisis de Artículos</button>
 </div>
 
 <main id="viewPanel">
@@ -320,6 +327,117 @@ footer{padding:20px 40px;border-top:1px solid var(--border);font-size:10px;color
     </div>
     <div class="pivot-wrap"><table class="pivot" id="pivotV"></table></div>
   </div>
+</main>
+
+<main id="viewArt" style="display:none">
+
+  <div id="artAviso" style="display:none;margin:0 0 16px;border-left:2px solid var(--accent);background:rgba(212,168,83,.06);padding:10px 14px;font-size:11px;font-family:var(--font-mono);color:var(--muted)"></div>
+
+  <!-- ===== Controles ===== -->
+  <div class="chart-card" style="margin-bottom:18px">
+    <div class="chart-header" style="margin-bottom:14px">
+      <div>
+        <div class="chart-title">Análisis por Artículo · Temporada · Color</div>
+        <div class="chart-subtitle">La venta semanal se calcula sobre la ventana propia de abajo (no sobre el rango de fechas del encabezado). El stock es el actual. Respeta los filtros de Temporada / Marca / Rubro.</div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="range-label">Ventana de venta</span>
+      <div style="display:flex;gap:4px">
+        <button class="preset-btn" id="btnArtV4" onclick="setArtVentana(4)">4 sem</button>
+        <button class="preset-btn active" id="btnArtV8" onclick="setArtVentana(8)">8 sem</button>
+        <button class="preset-btn" id="btnArtV12" onclick="setArtVentana(12)">12 sem</button>
+        <button class="preset-btn" id="btnArtV26" onclick="setArtVentana(26)">26 sem</button>
+      </div>
+
+      <span class="range-label" style="margin-left:8px">Mostrar</span>
+      <select class="date-input" id="artEstado" onchange="renderArt()">
+        <option value="alertas">Solo alertas</option>
+        <option value="todos">Todos</option>
+        <option value="AGOTADO">Agotado</option>
+        <option value="FALTANTE">Faltante</option>
+        <option value="SOBRANTE">Sobrante</option>
+        <option value="SINROT">Sin rotación</option>
+        <option value="OK">OK</option>
+        <option value="propio">Con umbral propio</option>
+      </select>
+
+      <input type="text" class="date-input" id="artBuscar" placeholder="Buscar artículo / color..." style="min-width:190px" oninput="renderArt()">
+
+      <button class="preset-btn" onclick="artExcel()" style="margin-left:auto">⬇ Excel</button>
+    </div>
+
+    <!-- Modo de aviso -->
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="range-label">Avisar por Telegram</span>
+      <div style="display:flex;gap:4px">
+        <button class="preset-btn active" id="btnModoTodas" onclick="setArtModo('todas')" title="Te avisa de todas las combinaciones que estén en alerta, salvo las que destildes">Todas las alertas</button>
+        <button class="preset-btn" id="btnModoMarcadas" onclick="setArtModo('marcadas')" title="Te avisa SOLO de las combinaciones que tildaste en la columna Seguir">Solo las que sigo</button>
+      </div>
+      <span style="font-size:10px;font-family:var(--font-mono);color:var(--muted2)" id="artModoAyuda"></span>
+    </div>
+
+    <!-- Umbrales por defecto -->
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="range-label">Umbrales por defecto</span>
+      <label class="range-label" style="text-transform:none;letter-spacing:0;color:var(--muted)">Stock mínimo
+        <input type="number" min="0" step="1" class="date-input" id="defStockMin" style="width:72px;margin-left:5px">
+      </label>
+      <label class="range-label" style="text-transform:none;letter-spacing:0;color:var(--muted)">Cobertura mín. (sem)
+        <input type="number" min="0" step="0.5" class="date-input" id="defCobMin" style="width:72px;margin-left:5px">
+      </label>
+      <label class="range-label" style="text-transform:none;letter-spacing:0;color:var(--muted)">Cobertura máx. (sem)
+        <input type="number" min="0" step="0.5" class="date-input" id="defCobMax" style="width:72px;margin-left:5px">
+      </label>
+      <button class="preset-btn" onclick="artGuardarDefaults()" id="btnArtDef">Guardar por defecto</button>
+      <span id="artDefMsg" style="font-size:10px;font-family:var(--font-mono);color:var(--muted2)"></span>
+    </div>
+  </div>
+
+  <!-- ===== Scorecards ===== -->
+  <div class="scorecards">
+    <div class="scorecard"><div class="sc-label">Combinaciones</div><div class="sc-value" id="scArtTot">—</div><div class="sc-sub">artículo · temp. · color</div></div>
+    <div class="scorecard"><div class="sc-label">Agotado</div><div class="sc-value" id="scArtAgot" style="color:#ff6060">—</div><div class="sc-sub">vende y quedó en cero</div></div>
+    <div class="scorecard"><div class="sc-label">Faltante</div><div class="sc-value" id="scArtFalta" style="color:var(--red)">—</div><div class="sc-sub">queda poco: bajo el mín. o la cobertura</div></div>
+    <div class="scorecard"><div class="sc-label">Sobrante</div><div class="sc-value" id="scArtSobra" style="color:var(--yellow)">—</div><div class="sc-sub">cobertura sobre el máximo</div></div>
+    <div class="scorecard"><div class="sc-label">Sin rotación</div><div class="sc-value" id="scArtSinRot" style="color:var(--purple)">—</div><div class="sc-sub">con stock, cero ventas</div></div>
+    <div class="scorecard"><div class="sc-label" id="scArtPropLbl">Umbrales propios</div><div class="sc-value" id="scArtProp">—</div><div class="sc-sub" id="scArtPropSub">filas configuradas a mano</div></div>
+  </div>
+
+  <!-- ===== Tabla ===== -->
+  <div class="table-card">
+    <div class="chart-header">
+      <div>
+        <div class="chart-title">Detalle y umbrales</div>
+        <div class="chart-subtitle" id="artTablaSub">Editá los umbrales de una fila y apretá Guardar. En blanco = usa el valor por defecto.</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="artSaveMsg" style="font-size:10px;font-family:var(--font-mono);color:var(--muted2)"></span>
+        <button class="preset-btn" id="btnArtGuardar" onclick="artGuardarFilas()">Guardar umbrales</button>
+      </div>
+    </div>
+    <table class="data-table">
+      <thead><tr>
+        <th class="th-sort" onclick="sortArt('articulo')">Artículo<span class="sort-arrow" id="ax-articulo"></span></th>
+        <th class="th-sort" onclick="sortArt('temporada')">Temp.<span class="sort-arrow" id="ax-temporada"></span></th>
+        <th class="th-sort" onclick="sortArt('color')">Color<span class="sort-arrow" id="ax-color"></span></th>
+        <th>Marca</th>
+        <th class="td-num th-sort" onclick="sortArt('stock')">Stock<span class="sort-arrow" id="ax-stock"></span></th>
+        <th class="td-num th-sort" onclick="sortArt('vendido')">Vend. ventana<span class="sort-arrow" id="ax-vendido"></span></th>
+        <th class="td-num th-sort" onclick="sortArt('velocidad')">Pares/sem<span class="sort-arrow" id="ax-velocidad"></span></th>
+        <th class="td-num th-sort" onclick="sortArt('cobertura')">Cobertura<span class="sort-arrow" id="ax-cobertura"></span></th>
+        <th class="th-sort" onclick="sortArt('estado')">Estado<span class="sort-arrow" id="ax-estado"></span></th>
+        <th class="td-num">Stock mín.</th>
+        <th class="td-num">Cob. mín.</th>
+        <th class="td-num">Cob. máx.</th>
+        <th id="thSeguir" title="Prendido / apagado del seguimiento de esta combinación">Seguir</th>
+      </tr></thead>
+      <tbody id="artBody"><tr><td colspan="13" class="empty-state">Cargá los datos para ver el análisis</td></tr></tbody>
+    </table>
+    <div id="artCorte" style="margin-top:10px;font-size:10px;font-family:var(--font-mono);color:var(--muted2)"></div>
+  </div>
+
 </main>
 
 <!-- ===== MODAL SKU SIN COSTO ===== -->
@@ -694,6 +812,8 @@ function renderAll(){
   // Si la pestaña Resumen está abierta, refrescarla también
   const vr=document.getElementById('viewResumen');
   if(vr&&vr.style.display!=='none')renderPivots();
+  const va=document.getElementById('viewArt');
+  if(va&&va.style.display!=='none')renderArt();
 }
 
 function renderScorecards(arts){
@@ -1006,12 +1126,18 @@ function setLoading(t){document.getElementById('loadingText').textContent=t;}
 function hideLoading(){document.getElementById('loadingOverlay').classList.remove('visible');}
 // ====== PESTAÑAS + TABLAS CRUZADAS EN PANTALLA ======
 function setView(v){
-  const esPanel=(v==='panel');
-  document.getElementById('viewPanel').style.display=esPanel?'':'none';
-  document.getElementById('viewResumen').style.display=esPanel?'none':'';
-  document.getElementById('tabPanel').classList.toggle('active',esPanel);
-  document.getElementById('tabResumen').classList.toggle('active',!esPanel);
-  if(!esPanel)renderPivots();
+  const VISTAS={panel:'viewPanel',resumen:'viewResumen',art:'viewArt'};
+  const TABS={panel:'tabPanel',resumen:'tabResumen',art:'tabArt'};
+  for(const k in VISTAS){
+    const el=document.getElementById(VISTAS[k]);if(el)el.style.display=(k===v)?'':'none';
+    const t=document.getElementById(TABS[k]);if(t)t.classList.toggle('active',k===v);
+  }
+  if(v==='resumen')renderPivots();
+  if(v==='art')artAbrir();
+}
+async function artAbrir(){
+  if(!artUmbralesOk)await artCargarUmbrales();
+  renderArt();
 }
 // Agrega el stock por marca x temporada a nivel SKU (misma fuente que el Excel)
 function aggMarcaTemp(){
@@ -1203,6 +1329,415 @@ function descargarExcel(){
   XLSX.writeFile(wb,'STOCK_VALORIZADO_'+stamp+'.xlsx');
   const total=rows.reduce((s,r)=>s+(Number(r.VALORIZADO)||0),0);
   setStatus('Excel: '+fmtN(rows.length)+' SKU · '+fmtARS(total)+(sinCosto?' · '+fmtN(sinCosto)+' sin costo':''),true);
+}
+
+
+// ============================================================
+// ===== PESTAÑA: ANÁLISIS DE ARTÍCULOS (alertas de stock) =====
+// ============================================================
+const WEBHOOK_ALERTAS='https://n8n.mahra-ai.online/webhook/stock-alertas';
+const WEBHOOK_ALERTAS_SAVE='https://n8n.mahra-ai.online/webhook/stock-alertas-guardar';
+const WEBHOOK_ALERTAS_DEL='https://n8n.mahra-ai.online/webhook/stock-alertas-borrar';
+
+const ART_DEF_FALLBACK={stock_min:6,cob_min:3,cob_max:26};
+const ART_MAX_FILAS=400;
+const ART_SEV={AGOTADO:0,FALTANTE:1,SOBRANTE:2,SINROT:3,OK:4,OFF:5};
+
+let artVentana=8;              // semanas de la ventana propia de velocidad
+let artData=[];                // filas calculadas
+let artUmbrales={};            // clave -> fila de la data table (override)
+let artDefault={...ART_DEF_FALLBACK};
+let artDirty={};               // clave -> campos editados sin guardar
+let artUmbralesOk=false;       // ¿pudimos leer la API?
+let artModo='todas';           // 'todas' = avisa todas las alertas · 'marcadas' = solo las que tienen seguimiento tildado
+let artSort={k:'sev',dir:'asc'};
+
+function artClave(a,t,c){return a+'|'+t+'|'+c;}
+function artNum(v){if(v===null||v===undefined||v==='')return null;const n=Number(v);return isFinite(n)?n:null;}
+function fmt1(n){return (Math.round(n*10)/10).toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1});}
+
+// Umbral efectivo de una combinación: override si existe, si no el default.
+function artUmbralDe(clave){
+  const o=artUmbrales[clave];
+  const sm=o?artNum(o.stock_min):null, cmi=o?artNum(o.cob_min):null, cma=o?artNum(o.cob_max):null;
+  return{
+    stock_min: sm!==null?sm:artDefault.stock_min,
+    cob_min:   cmi!==null?cmi:artDefault.cob_min,
+    cob_max:   cma!==null?cma:artDefault.cob_max,
+    activo:    o&&o.activo===false?false:true,
+    propio:    !!o
+  };
+}
+
+// En modo 'marcadas' solo se evalúan las combinaciones con el seguimiento tildado.
+function artSigue(u){ return artModo==='marcadas' ? (u.propio && u.activo) : u.activo; }
+function artEstado(d,u){
+  if(!artSigue(u))return'OFF';
+  if(d.velocidad<=0)return d.stock>0?'SINROT':'NADA';
+  if(d.stock<=0)return'AGOTADO';                 // vende y no queda nada
+  if(d.stock<u.stock_min)return'FALTANTE';       // queda poco
+  if(d.cobertura<u.cob_min)return'FALTANTE';     // dura menos que la cobertura mínima
+  if(d.cobertura>u.cob_max)return'SOBRANTE';
+  return'OK';
+}
+
+// Arma una fila por ARTICULO|TEMPORADA|COLOR.
+// Stock = actual (no depende de fechas). Ventas = ventana propia de N semanas hasta hoy.
+function buildArtData(){
+  const f=getFilters();
+  const hasta=new Date();hasta.setHours(23,59,59,999);
+  const desde=new Date();desde.setDate(desde.getDate()-artVentana*7);desde.setHours(0,0,0,0);
+  const M={};
+  function pass(i){
+    if(f.rubro&&i.rubro!==f.rubro)return false;
+    if(f.temporadas.length&&f.temporadas.indexOf(i.temporada)<0)return false;
+    if(f.marcas.length&&f.marcas.indexOf(i.marca)<0)return false;
+    return true;
+  }
+  function ensure(i){
+    const k=artClave(i.articulo,i.temporada,i.color);
+    if(!M[k])M[k]={clave:k,articulo:i.articulo,temporada:i.temporada,color:i.color,marca:i.marca,rubro:i.rubro,stock:0,vendido:0};
+    return M[k];
+  }
+  rawStock.forEach(r=>{
+    const i=parseArticulo(String(r.sku||'').trim().toUpperCase());
+    if(!i||!pass(i))return;
+    ensure(i).stock+=parseNum(r.stk_local);
+  });
+  let ultimaVenta=null;
+  rawVentas.forEach(r=>{
+    const i=parseArticulo(String(r.sku||'').trim().toUpperCase());
+    if(!i||!pass(i))return;
+    const d=parseDate(r.fecha);if(!d)return;
+    if(!ultimaVenta||d>ultimaVenta)ultimaVenta=d;
+    if(d<desde||d>hasta)return;
+    ensure(i).vendido+=parseNum(r.cantidad);
+  });
+  artData=Object.values(M).map(d=>{
+    d.velocidad=d.vendido/artVentana;
+    d.cobertura=d.velocidad>0?d.stock/d.velocidad:Infinity;
+    const u=artUmbralDe(d.clave);
+    d.u=u;d.estado=artEstado(d,u);d.sev=ART_SEV[d.estado];
+    return d;
+  }).filter(d=>d.estado!=='NADA');
+  return{desde,hasta,ultimaVenta};
+}
+
+async function artCargarUmbrales(){
+  try{
+    const r=await fetch(WEBHOOK_ALERTAS,{cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const rows=await r.json();
+    if(!Array.isArray(rows))throw new Error('respuesta inesperada');
+    artUmbrales={};artDefault={...ART_DEF_FALLBACK};
+    rows.forEach(o=>{
+      if(!o||!o.clave)return;
+      if(o.clave==='__DEFAULT__'){
+        const sm=artNum(o.stock_min),cmi=artNum(o.cob_min),cma=artNum(o.cob_max);
+        if(sm!==null)artDefault.stock_min=sm;
+        if(cmi!==null)artDefault.cob_min=cmi;
+        if(cma!==null)artDefault.cob_max=cma;
+        artModo=(String(o.modo||'').trim().toLowerCase()==='marcadas')?'marcadas':'todas';
+      }else artUmbrales[o.clave]=o;
+    });
+    artUmbralesOk=true;
+    return true;
+  }catch(e){
+    artUmbralesOk=false;
+    artAviso('No se pudieron leer los umbrales del servidor ('+e.message+'). Se están usando los valores por defecto locales y NO se puede guardar.');
+    return false;
+  }
+}
+
+function artAviso(txt){
+  const el=document.getElementById('artAviso');if(!el)return;
+  if(!txt){el.style.display='none';el.textContent='';return;}
+  el.textContent='⚠ '+txt;el.style.display='block';
+}
+
+function setArtVentana(n){
+  artVentana=n;
+  [4,8,12,26].forEach(x=>{
+    const b=document.getElementById('btnArtV'+x);
+    if(b)b.classList.toggle('active',x===n);
+  });
+  renderArt();
+}
+
+function sortArt(k){
+  if(artSort.k===k)artSort.dir=artSort.dir==='asc'?'desc':'asc';
+  else{artSort.k=k;artSort.dir=(k==='articulo'||k==='temporada'||k==='color'||k==='estado')?'asc':'desc';}
+  renderArt();
+}
+
+function renderArt(){
+  const body=document.getElementById('artBody');if(!body)return;
+  if(!rawStock.length&&!rawVentas.length){
+    body.innerHTML='<tr><td colspan="13" class="empty-state">Cargá los datos para ver el análisis</td></tr>';
+    return;
+  }
+  const{desde,hasta,ultimaVenta}=buildArtData();
+
+  // Aviso de datos rezagados: la ventana termina hoy, si la última venta es vieja la velocidad baja sola.
+  if(artUmbralesOk){
+    const dias=ultimaVenta?Math.round((hasta-ultimaVenta)/86400000):null;
+    if(dias!==null&&dias>3)artAviso('La última venta cargada es del '+fmtDate(ultimaVenta)+' ('+dias+' días). La ventana termina hoy, así que la velocidad puede estar subestimada.');
+    else artAviso('');
+  }
+
+  const sub=document.getElementById('artTablaSub');
+  if(sub)sub.textContent='Ventana '+artVentana+' semanas: '+fmtDate(desde)+' → '+fmtDate(hasta)+
+    ' · Editá los umbrales y apretá Guardar (en blanco = usa el valor por defecto). El Estado se recalcula al guardar.';
+
+  // Scorecards
+  const cnt={AGOTADO:0,FALTANTE:0,SOBRANTE:0,SINROT:0,OK:0,OFF:0};
+  artData.forEach(d=>{cnt[d.estado]=(cnt[d.estado]||0)+1;});
+  const setSC=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  setSC('scArtTot',fmtN(artData.length));
+  setSC('scArtAgot',fmtN(cnt.AGOTADO));
+  setSC('scArtFalta',fmtN(cnt.FALTANTE));
+  setSC('scArtSobra',fmtN(cnt.SOBRANTE));
+  setSC('scArtSinRot',fmtN(cnt.SINROT));
+  const nSigo=Object.values(artUmbrales).filter(o=>o.activo!==false).length;
+  setSC('scArtProp',artModo==='marcadas'?fmtN(nSigo):fmtN(Object.keys(artUmbrales).length));
+  const propLbl=document.getElementById('scArtPropLbl'),propSub=document.getElementById('scArtPropSub');
+  if(propLbl)propLbl.textContent=artModo==='marcadas'?'En seguimiento':'Umbrales propios';
+  if(propSub)propSub.textContent=artModo==='marcadas'?'las únicas que avisan por Telegram':'filas configuradas a mano';
+
+  // Filtros de la pestaña
+  const modo=document.getElementById('artEstado').value;
+  const q=document.getElementById('artBuscar').value.trim().toUpperCase();
+  let rows=artData.filter(d=>{
+    if(modo==='alertas'&&!(d.estado==='AGOTADO'||d.estado==='FALTANTE'||d.estado==='SOBRANTE'||d.estado==='SINROT'))return false;
+    if(modo==='propio'&&!d.u.propio)return false;
+    if(modo!=='alertas'&&modo!=='todos'&&modo!=='propio'&&d.estado!==modo)return false;
+    if(q&&(d.articulo+' '+d.temporada+' '+d.color+' '+d.marca).toUpperCase().indexOf(q)<0)return false;
+    return true;
+  });
+
+  // Orden
+  const k=artSort.k,mul=artSort.dir==='asc'?1:-1;
+  rows.sort((a,b)=>{
+    let va=a[k],vb=b[k];
+    if(k==='estado'){va=a.sev;vb=b.sev;}
+    if(typeof va==='string'||typeof vb==='string')return String(va).localeCompare(String(vb))*mul;
+    if(va===Infinity)va=Number.MAX_VALUE;if(vb===Infinity)vb=Number.MAX_VALUE;
+    if(va===vb)return b.vendido-a.vendido;
+    return (va-vb)*mul;
+  });
+  if(k==='sev')rows.sort((a,b)=>a.sev-b.sev||b.vendido-a.vendido);
+
+  ['articulo','temporada','color','stock','vendido','velocidad','cobertura','estado'].forEach(c=>{
+    const e=document.getElementById('ax-'+c);
+    if(e)e.textContent=(artSort.k===c)?(artSort.dir==='asc'?'▲':'▼'):'';
+  });
+
+  const total=rows.length;
+  const vis=rows.slice(0,ART_MAX_FILAS);
+  const corte=document.getElementById('artCorte');
+  if(corte)corte.textContent=total>ART_MAX_FILAS
+    ? 'Mostrando '+ART_MAX_FILAS+' de '+fmtN(total)+' filas. Afiná con el buscador o los filtros del encabezado — el Excel baja todas.'
+    : fmtN(total)+' fila'+(total===1?'':'s');
+
+  if(!vis.length){
+    body.innerHTML='<tr><td colspan="13" class="empty-state">Sin filas con estos filtros</td></tr>';
+    return;
+  }
+
+  const COLOR={AGOTADO:'#ff6060',FALTANTE:'var(--red)',SOBRANTE:'var(--yellow)',SINROT:'var(--purple)',OK:'var(--green)',OFF:'var(--muted2)'};
+  const TXT={AGOTADO:'AGOTADO',FALTANTE:'FALTANTE',SOBRANTE:'SOBRANTE',SINROT:'SIN ROTACIÓN',OK:'OK',OFF:'sin alerta'};
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const puedeGuardar=artUmbralesOk;
+
+  body.innerHTML=vis.map(d=>{
+    const o=artUmbrales[d.clave]||{};
+    const dv=artDirty[d.clave]||{};
+    const val=c=>{
+      if(Object.prototype.hasOwnProperty.call(dv,c))return dv[c]===null?'':dv[c];
+      const n=artNum(o[c]);return n===null?'':n;
+    };
+    const act=Object.prototype.hasOwnProperty.call(dv,'activo')?dv.activo:(o.activo===false?false:true);
+    const ph=c=>artDefault[c];
+    const inp=(c,step)=>`<input type="number" min="0" step="${step}" class="art-inp" data-clave="${esc(d.clave)}" data-campo="${c}" value="${val(c)}" placeholder="${ph(c)}" ${puedeGuardar?'':'disabled'} onchange="artEdit(this)">`;
+    const cob=d.velocidad>0?fmt1(d.cobertura)+' sem':'∞';
+    return `<tr${dv&&Object.keys(dv).length?' style="background:rgba(212,168,83,.06)"':''}>
+      <td>${esc(d.articulo)}</td>
+      <td>${esc(d.temporada)}</td>
+      <td>${esc(d.color)}</td>
+      <td style="color:var(--muted)">${esc(d.marca)}</td>
+      <td class="td-num">${fmtN(d.stock)}</td>
+      <td class="td-num">${fmtN(d.vendido)}</td>
+      <td class="td-num">${fmt1(d.velocidad)}</td>
+      <td class="td-num">${cob}</td>
+      <td style="color:${COLOR[d.estado]}">${TXT[d.estado]}${d.u.propio?' <span title="umbral propio" style="color:var(--accent)">•</span>':''}</td>
+      <td class="td-num">${inp('stock_min',1)}</td>
+      <td class="td-num">${inp('cob_min',0.5)}</td>
+      <td class="td-num">${inp('cob_max',0.5)}</td>
+      <td style="white-space:nowrap"><input type="checkbox" data-clave="${esc(d.clave)}" data-campo="activo" ${act?'checked':''} ${puedeGuardar?'':'disabled'} onchange="artEdit(this)">${d.u.propio&&puedeGuardar?` <span class="art-reset" title="Quitar el umbral propio y volver a los valores por defecto" onclick="artBorrarUmbral('${esc(d.clave).replace(/'/g,"\\'")}')">↺</span>`:''}</td>
+    </tr>`;
+  }).join('');
+
+  artSyncDefaultsUI();
+  artSaveMsg();
+}
+
+function artSyncDefaultsUI(){
+  const bt=document.getElementById('btnModoTodas'),bm=document.getElementById('btnModoMarcadas');
+  if(bt){bt.classList.toggle('active',artModo==='todas');bt.disabled=!artUmbralesOk;}
+  if(bm){bm.classList.toggle('active',artModo==='marcadas');bm.disabled=!artUmbralesOk;}
+  const ay=document.getElementById('artModoAyuda');
+  if(ay)ay.textContent=artModo==='marcadas'
+    ? 'Solo te llegan las que tenés tildadas en la columna Seguir. El resto se muestra igual acá, pero no avisa.'
+    : 'Te llegan todas las que estén en alerta. Destildá una fila en Seguir para silenciarla.';
+  const th=document.getElementById('thSeguir');
+  if(th)th.title=artModo==='marcadas'
+    ? 'Tildado = esta combinación te avisa por Telegram. Destildado = no.'
+    : 'Destildado = silenciada: no avisa ni acá ni por Telegram.';
+  const m={defStockMin:'stock_min',defCobMin:'cob_min',defCobMax:'cob_max'};
+  for(const id in m){
+    const e=document.getElementById(id);
+    if(e&&document.activeElement!==e)e.value=artDefault[m[id]];
+    if(e)e.disabled=!artUmbralesOk;
+  }
+  const b=document.getElementById('btnArtDef');if(b)b.disabled=!artUmbralesOk;
+}
+
+async function setArtModo(m){
+  if(!artUmbralesOk)return;
+  const antes=artModo;
+  artModo=(m==='marcadas')?'marcadas':'todas';
+  document.getElementById('btnModoTodas').classList.toggle('active',artModo==='todas');
+  document.getElementById('btnModoMarcadas').classList.toggle('active',artModo==='marcadas');
+  renderArt();
+  try{
+    await artPost([{clave:'__DEFAULT__',articulo:'',temporada:'',color:'',
+      stock_min:artDefault.stock_min,cob_min:artDefault.cob_min,cob_max:artDefault.cob_max,activo:true,modo:artModo}]);
+    artSaveMsg('✓ modo de aviso guardado',true);
+  }catch(e){
+    artModo=antes;
+    document.getElementById('btnModoTodas').classList.toggle('active',artModo==='todas');
+    document.getElementById('btnModoMarcadas').classList.toggle('active',artModo==='marcadas');
+    renderArt();
+    artSaveMsg('No se pudo guardar el modo: '+e.message,false);
+  }
+}
+
+function artEdit(el){
+  const k=el.dataset.clave,campo=el.dataset.campo;
+  if(!artDirty[k])artDirty[k]={};
+  artDirty[k][campo]=(campo==='activo')?el.checked:(el.value===''?null:Number(el.value));
+  const tr=el.closest('tr');if(tr)tr.style.background='rgba(212,168,83,.06)';
+  artSaveMsg();
+}
+
+function artSaveMsg(txt,ok){
+  const e=document.getElementById('artSaveMsg');if(!e)return;
+  if(txt!==undefined){e.textContent=txt;e.style.color=ok===false?'var(--red)':(ok?'var(--green)':'var(--muted2)');return;}
+  const n=Object.keys(artDirty).length;
+  e.textContent=n?n+' fila'+(n===1?'':'s')+' sin guardar':'';
+  e.style.color='var(--accent)';
+}
+
+async function artPost(filas){
+  const r=await fetch(WEBHOOK_ALERTAS_SAVE,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filas})});
+  const t=await r.text();
+  if(!r.ok)throw new Error('HTTP '+r.status+(t?' · '+t.slice(0,120):''));
+  return t;
+}
+
+async function artGuardarFilas(){
+  const claves=Object.keys(artDirty);
+  if(!claves.length){artSaveMsg('No hay cambios para guardar');return;}
+  if(!artUmbralesOk){artSaveMsg('Sin conexión con el servidor de umbrales',false);return;}
+  const btn=document.getElementById('btnArtGuardar');btn.disabled=true;
+  artSaveMsg('Guardando '+claves.length+'…');
+  const filas=claves.map(k=>{
+    const base=artUmbrales[k]||{},d=artDirty[k];
+    const p=k.split('|');
+    const g=c=>{
+      const v=Object.prototype.hasOwnProperty.call(d,c)?d[c]:artNum(base[c]);
+      return (v===null||v===undefined||v==='')?null:Number(v);
+    };
+    const act=Object.prototype.hasOwnProperty.call(d,'activo')?d.activo:(base.activo===false?false:true);
+    return{clave:k,articulo:p[0]||'',temporada:p[1]||'',color:p[2]||'',
+      stock_min:g('stock_min'),cob_min:g('cob_min'),cob_max:g('cob_max'),activo:act};
+  });
+  try{
+    await artPost(filas);
+    filas.forEach(f=>{artUmbrales[f.clave]=f;});
+    artDirty={};
+    artSaveMsg('✓ '+filas.length+' fila'+(filas.length===1?'':'s')+' guardada'+(filas.length===1?'':'s'),true);
+    const msg=document.getElementById('artSaveMsg').textContent;
+    renderArt();
+    artSaveMsg(msg,true);
+  }catch(e){
+    artSaveMsg('Error al guardar: '+e.message,false);
+  }finally{btn.disabled=false;}
+}
+
+async function artGuardarDefaults(){
+  if(!artUmbralesOk)return;
+  const sm=artNum(document.getElementById('defStockMin').value);
+  const cmi=artNum(document.getElementById('defCobMin').value);
+  const cma=artNum(document.getElementById('defCobMax').value);
+  const el=document.getElementById('artDefMsg');
+  if(sm===null||cmi===null||cma===null){el.textContent='Completá los tres valores';el.style.color='var(--red)';return;}
+  if(cmi>=cma){el.textContent='La cobertura mínima tiene que ser menor que la máxima';el.style.color='var(--red)';return;}
+  const btn=document.getElementById('btnArtDef');btn.disabled=true;
+  el.textContent='Guardando…';el.style.color='var(--muted2)';
+  try{
+    await artPost([{clave:'__DEFAULT__',articulo:'',temporada:'',color:'',stock_min:sm,cob_min:cmi,cob_max:cma,activo:true,modo:artModo}]);
+    artDefault={stock_min:sm,cob_min:cmi,cob_max:cma};
+    el.textContent='✓ guardado';el.style.color='var(--green)';
+    renderArt();
+  }catch(e){
+    el.textContent='Error: '+e.message;el.style.color='var(--red)';
+  }finally{btn.disabled=false;}
+}
+
+async function artBorrarUmbral(clave){
+  if(!artUmbralesOk)return;
+  if(!artUmbrales[clave])return;
+  artSaveMsg('Quitando umbral propio…');
+  try{
+    const r=await fetch(WEBHOOK_ALERTAS_DEL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({claves:[clave]})});
+    const t=await r.text();
+    if(!r.ok)throw new Error('HTTP '+r.status+(t?' · '+t.slice(0,120):''));
+    delete artUmbrales[clave];delete artDirty[clave];
+    renderArt();
+    artSaveMsg('✓ umbral propio quitado',true);
+  }catch(e){artSaveMsg('Error al quitar: '+e.message,false);}
+}
+
+function artExcel(){
+  if(!artData.length){showError('No hay datos para exportar. Cargá los datos primero.');return;}
+  const modo=document.getElementById('artEstado').value;
+  const q=document.getElementById('artBuscar').value.trim().toUpperCase();
+  const rows=artData.filter(d=>{
+    if(modo==='alertas'&&!(d.estado==='AGOTADO'||d.estado==='FALTANTE'||d.estado==='SOBRANTE'||d.estado==='SINROT'))return false;
+    if(modo==='propio'&&!d.u.propio)return false;
+    if(modo!=='alertas'&&modo!=='todos'&&modo!=='propio'&&d.estado!==modo)return false;
+    if(q&&(d.articulo+' '+d.temporada+' '+d.color+' '+d.marca).toUpperCase().indexOf(q)<0)return false;
+    return true;
+  }).sort((a,b)=>a.sev-b.sev||b.vendido-a.vendido).map(d=>({
+    ARTICULO:d.articulo,TEMPORADA:d.temporada,COLOR:d.color,MARCA:d.marca,
+    STOCK:Math.round(d.stock),VENDIDO:Math.round(d.vendido),
+    PARES_SEMANA:Math.round(d.velocidad*100)/100,
+    COBERTURA_SEM:d.velocidad>0?Math.round(d.cobertura*10)/10:'',
+    ESTADO:d.estado==='SINROT'?'SIN ROTACION':d.estado,
+    STOCK_MIN:d.u.stock_min,COB_MIN:d.u.cob_min,COB_MAX:d.u.cob_max,
+    UMBRAL_PROPIO:d.u.propio?'SI':'',ALERTA:d.u.activo?'SI':'NO'
+  }));
+  if(!rows.length){showError('No hay filas para exportar con estos filtros.');return;}
+  const HEAD=['ARTICULO','TEMPORADA','COLOR','MARCA','STOCK','VENDIDO','PARES_SEMANA','COBERTURA_SEM','ESTADO','STOCK_MIN','COB_MIN','COB_MAX','UMBRAL_PROPIO','ALERTA'];
+  const ws=XLSX.utils.json_to_sheet(rows,{header:HEAD});
+  ws['!cols']=[{wch:20},{wch:10},{wch:14},{wch:12},{wch:8},{wch:9},{wch:13},{wch:14},{wch:14},{wch:10},{wch:9},{wch:9},{wch:13},{wch:8}];
+  ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows.length,c:HEAD.length-1}})};
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Analisis Articulos');
+  const h=new Date(),p=n=>String(n).padStart(2,'0');
+  XLSX.writeFile(wb,'ANALISIS_ARTICULOS_'+h.getFullYear()+'_'+p(h.getMonth()+1)+'_'+p(h.getDate())+'.xlsx');
+  setStatus('Excel: '+fmtN(rows.length)+' combinaciones',true);
 }
 
 function showError(m){const el=document.getElementById('errorMsg');el.textContent='⚠ '+m;el.style.display='block';}
