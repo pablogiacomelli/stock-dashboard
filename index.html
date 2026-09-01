@@ -96,6 +96,16 @@ main{padding:28px 40px}
 .art-inp:disabled{opacity:.35;cursor:not-allowed}
 .ms-buscar{position:sticky;top:-6px;z-index:2;width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--font-mono);font-size:11px;padding:4px 6px;outline:none;margin-bottom:5px;box-sizing:border-box}
 .ms-buscar:focus{border-color:var(--accent)}
+.ped-form{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.ped-form label{display:flex;flex-direction:column;gap:4px;font-size:10px;color:var(--muted2);font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase}
+.ped-del{color:var(--muted2);cursor:pointer;font-size:12px;user-select:none;padding:0 4px}
+.ped-del:hover{color:var(--red)}
+.ped-sub td{background:var(--surface2);padding:10px 12px}
+.ped-ent{border-collapse:collapse;font-family:var(--font-mono);font-size:10px}
+.ped-ent th{text-align:left;color:var(--muted2);font-weight:400;padding:2px 14px 4px 0;text-transform:uppercase;letter-spacing:.1em}
+.ped-ent td{padding:3px 14px 3px 0;color:var(--text)}
+.ped-ent .td-num{text-align:right}
+.tot-row td{border-top:1px solid var(--border2);font-weight:500;color:var(--accent)}
 .art-reset{color:var(--accent);cursor:pointer;font-size:13px;margin-left:5px;user-select:none}
 .art-reset:hover{opacity:.6}
 .col-filter{background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--font-mono);font-size:10px;padding:2px 4px;margin-top:5px;cursor:pointer;outline:none;display:block;text-transform:none;letter-spacing:0}
@@ -218,6 +228,7 @@ footer{padding:20px 40px;border-top:1px solid var(--border);font-size:10px;color
   <button class="tab-btn active" id="tabPanel" onclick="setView('panel')">📊 Panel</button>
   <button class="tab-btn" id="tabResumen" onclick="setView('resumen')">🗓 Resumen por Temporada</button>
   <button class="tab-btn" id="tabArt" onclick="setView('art')">🎯 Análisis de Artículos</button>
+  <button class="tab-btn" id="tabPed" onclick="setView('ped')">📋 Pedidos</button>
 </div>
 
 <main id="viewPanel">
@@ -467,6 +478,129 @@ footer{padding:20px 40px;border-top:1px solid var(--border);font-size:10px;color
       <tbody id="artBody"><tr><td colspan="13" class="empty-state">Cargá los datos para ver el análisis</td></tr></tbody>
     </table>
     <div id="artCorte" style="margin-top:10px;font-size:10px;font-family:var(--font-mono);color:var(--muted2)"></div>
+  </div>
+
+</main>
+
+<main id="viewPed" style="display:none">
+
+  <div id="pedAviso" style="display:none;margin:0 0 16px;border-left:2px solid var(--accent);background:rgba(212,168,83,.06);padding:10px 14px;font-size:11px;font-family:var(--font-mono);color:var(--muted)"></div>
+
+  <!-- ===== Temporada + filtros ===== -->
+  <div class="chart-card" style="margin-bottom:18px">
+    <div class="chart-header" style="margin-bottom:14px">
+      <div>
+        <div class="chart-title">Pedidos a Proveedores</div>
+        <div class="chart-subtitle">Una fila por artículo y color de cada pedido. Las entradas se registran abajo y se imputan al pedido pendiente más viejo.</div>
+      </div>
+      <button class="preset-btn" onclick="pedCargar(true)" id="btnPedRecargar">↻ Recargar</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="range-label">Temporada</span>
+      <input type="text" class="date-input" id="pedTemporada" list="pedTempList" style="width:96px;text-transform:uppercase" placeholder="V27" oninput="pedTempCambio()">
+      <datalist id="pedTempList"></datalist>
+      <label class="ms-item" style="display:inline-flex"><input type="checkbox" id="pedTodasTemp" onchange="renderPed()"> Ver todas las temporadas</label>
+
+      <span class="range-label" style="margin-left:8px">Marca</span>
+      <select class="date-input" id="pedMarca" onchange="renderPed()"><option value="">Todas</option></select>
+
+      <span class="range-label">Estado</span>
+      <select class="date-input" id="pedEstado" onchange="renderPed()">
+        <option value="">Todos</option>
+        <option value="pendiente">Con pendiente</option>
+        <option value="completo">Completos</option>
+        <option value="sinentregas">Sin ninguna entrega</option>
+        <option value="demas">Entregados de más</option>
+      </select>
+
+      <input type="text" class="date-input" id="pedBuscar" placeholder="Buscar artículo / color..." style="min-width:180px" oninput="renderPed()">
+      <button class="preset-btn" onclick="pedExcel()" style="margin-left:auto">⬇ Excel</button>
+    </div>
+  </div>
+
+  <!-- ===== Alta de línea de pedido ===== -->
+  <div class="chart-card" style="margin-bottom:18px">
+    <div class="chart-header" style="margin-bottom:12px">
+      <div><div class="chart-title">Cargar pedido</div><div class="chart-subtitle">Al agregar quedan fijos fecha, marca, artículo y costo: solo cambiás color y cantidad para seguir con el mismo artículo.</div></div>
+    </div>
+    <div class="ped-form">
+      <label>Fecha<input type="date" class="date-input" id="pfFecha"></label>
+      <label>Marca<input type="text" class="date-input" id="pfMarca" list="pedMarcaList" style="width:100px;text-transform:uppercase" placeholder="VL"></label>
+      <datalist id="pedMarcaList"></datalist>
+      <label>Artículo<input type="text" class="date-input" id="pfArticulo" style="width:130px;text-transform:uppercase" placeholder="802"></label>
+      <label title="El artículo como se llama en el sistema. Se puede completar después; es el campo que va a enganchar la carga automática desde las compras.">Art. sistema<input type="text" class="date-input" id="pfArtSistema" style="width:130px;text-transform:uppercase" placeholder="EMMA (opcional)"></label>
+      <label>Color<input type="text" class="date-input" id="pfColor" list="pedColorList" style="width:100px;text-transform:uppercase" placeholder="NGR"></label>
+      <datalist id="pedColorList"></datalist>
+      <label>Cantidad<input type="number" min="1" step="1" class="date-input" id="pfCantidad" style="width:82px"></label>
+      <label>Costo unit.<input type="number" min="0" step="0.01" class="date-input" id="pfCosto" style="width:110px"></label>
+      <label>Obs<input type="text" class="date-input" id="pfObs" style="width:120px" placeholder="opcional"></label>
+      <button class="btn-load" style="margin-left:0" onclick="pedAgregarLinea()" id="btnPedAgregar">+ Agregar</button>
+      <span id="pfMsg" style="font-size:10px;font-family:var(--font-mono);color:var(--muted2)"></span>
+    </div>
+  </div>
+
+  <!-- ===== Registrar entrada ===== -->
+  <div class="chart-card" style="margin-bottom:18px">
+    <div class="chart-header" style="margin-bottom:12px">
+      <div><div class="chart-title">Registrar entrada de mercadería</div><div class="chart-subtitle">Por artículo y color. Si hay más de un pedido pendiente de esa combinación, se cancela primero el más viejo.</div></div>
+    </div>
+    <div class="ped-form">
+      <label>Fecha<input type="date" class="date-input" id="peFecha"></label>
+      <label>Artículo<input type="text" class="date-input" id="peArticulo" list="pedPendArtList" style="width:130px;text-transform:uppercase" oninput="pedPreviaEntrada()"></label>
+      <datalist id="pedPendArtList"></datalist>
+      <label>Color<input type="text" class="date-input" id="peColor" list="pedPendColorList" style="width:100px;text-transform:uppercase" oninput="pedPreviaEntrada()"></label>
+      <datalist id="pedPendColorList"></datalist>
+      <label>Cantidad<input type="number" min="1" step="1" class="date-input" id="peCantidad" style="width:82px" oninput="pedPreviaEntrada()"></label>
+      <button class="btn-load" style="margin-left:0" onclick="pedRegistrarEntrada()" id="btnPedEntrada">↓ Registrar</button>
+      <span id="peMsg" style="font-size:10px;font-family:var(--font-mono);color:var(--muted2)"></span>
+    </div>
+    <div id="pePrevia" style="margin-top:10px;font-size:11px;font-family:var(--font-mono);color:var(--muted)"></div>
+  </div>
+
+  <!-- ===== Scorecards ===== -->
+  <div class="scorecards">
+    <div class="scorecard"><div class="sc-label">Pedido</div><div class="sc-value" id="scPedTotal">—</div><div class="sc-sub" id="scPedTotalSub">valorizado</div></div>
+    <div class="scorecard"><div class="sc-label">Entregado</div><div class="sc-value" id="scPedEntr" style="color:var(--green)">—</div><div class="sc-sub" id="scPedEntrSub">valorizado</div></div>
+    <div class="scorecard"><div class="sc-label">Pendiente</div><div class="sc-value" id="scPedPend" style="color:var(--yellow)">—</div><div class="sc-sub" id="scPedPendSub">valorizado</div></div>
+    <div class="scorecard"><div class="sc-label">% Entrega</div><div class="sc-value" id="scPedPct">—</div><div class="sc-sub">sobre unidades pedidas</div></div>
+    <div class="scorecard"><div class="sc-label">Líneas</div><div class="sc-value" id="scPedLineas">—</div><div class="sc-sub" id="scPedLineasSub">artículo · color</div></div>
+  </div>
+
+  <!-- ===== Resumen por marca ===== -->
+  <div class="table-card">
+    <div class="chart-header">
+      <div><div class="chart-title">Resumen por marca</div><div class="chart-subtitle">Cantidades y valorizado de lo pedido, lo entregado y lo que falta</div></div>
+    </div>
+    <div class="pivot-wrap"><table class="data-table" id="pedResumen"></table></div>
+  </div>
+
+  <!-- ===== Detalle ===== -->
+  <div class="table-card">
+    <div class="chart-header">
+      <div><div class="chart-title">Detalle de pedidos</div><div class="chart-subtitle" id="pedDetSub">Click en ▸ para ver las entradas de esa línea. El artículo del sistema se edita acá.</div></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="pedSaveMsg" style="font-size:10px;font-family:var(--font-mono);color:var(--muted2)"></span>
+      </div>
+    </div>
+    <table class="data-table">
+      <thead><tr>
+        <th style="width:22px"></th>
+        <th class="th-sort" onclick="sortPed('fecha')">Fecha<span class="sort-arrow" id="px-fecha"></span></th>
+        <th class="th-sort" onclick="sortPed('marca')">Marca<span class="sort-arrow" id="px-marca"></span></th>
+        <th class="th-sort" onclick="sortPed('articulo')">Artículo<span class="sort-arrow" id="px-articulo"></span></th>
+        <th title="El artículo como se llama en el sistema">Art. sistema</th>
+        <th class="th-sort" onclick="sortPed('color')">Color<span class="sort-arrow" id="px-color"></span></th>
+        <th class="td-num th-sort" onclick="sortPed('cantidad')">Cant.<span class="sort-arrow" id="px-cantidad"></span></th>
+        <th class="td-num th-sort" onclick="sortPed('costo')">Costo<span class="sort-arrow" id="px-costo"></span></th>
+        <th class="td-num th-sort" onclick="sortPed('total')">Total<span class="sort-arrow" id="px-total"></span></th>
+        <th class="td-num th-sort" onclick="sortPed('entregado')">Entreg.<span class="sort-arrow" id="px-entregado"></span></th>
+        <th class="td-num th-sort" onclick="sortPed('pendiente')">Pend.<span class="sort-arrow" id="px-pendiente"></span></th>
+        <th class="td-num th-sort" onclick="sortPed('pendienteM')">Pend. $<span class="sort-arrow" id="px-pendienteM"></span></th>
+        <th></th>
+      </tr></thead>
+      <tbody id="pedBody"><tr><td colspan="13" class="empty-state">Todavía no hay pedidos cargados</td></tr></tbody>
+    </table>
+    <div id="pedCorte" style="margin-top:10px;font-size:10px;font-family:var(--font-mono);color:var(--muted2)"></div>
   </div>
 
 </main>
@@ -1157,14 +1291,15 @@ function setLoading(t){document.getElementById('loadingText').textContent=t;}
 function hideLoading(){document.getElementById('loadingOverlay').classList.remove('visible');}
 // ====== PESTAÑAS + TABLAS CRUZADAS EN PANTALLA ======
 function setView(v){
-  const VISTAS={panel:'viewPanel',resumen:'viewResumen',art:'viewArt'};
-  const TABS={panel:'tabPanel',resumen:'tabResumen',art:'tabArt'};
+  const VISTAS={panel:'viewPanel',resumen:'viewResumen',art:'viewArt',ped:'viewPed'};
+  const TABS={panel:'tabPanel',resumen:'tabResumen',art:'tabArt',ped:'tabPed'};
   for(const k in VISTAS){
     const el=document.getElementById(VISTAS[k]);if(el)el.style.display=(k===v)?'':'none';
     const t=document.getElementById(TABS[k]);if(t)t.classList.toggle('active',k===v);
   }
   if(v==='resumen')renderPivots();
   if(v==='art')artAbrir();
+  if(v==='ped')pedCargar(false);
 }
 async function artAbrir(){
   if(!artUmbralesOk)await artCargarUmbrales();
@@ -1926,6 +2061,471 @@ function artExcel(){
   const h=new Date(),p=n=>String(n).padStart(2,'0');
   XLSX.writeFile(wb,'ANALISIS_ARTICULOS_'+h.getFullYear()+'_'+p(h.getMonth()+1)+'_'+p(h.getDate())+'.xlsx');
   setStatus('Excel: '+fmtN(rows.length)+' combinaciones',true);
+}
+
+
+// ============================================================
+// ===== PESTAÑA: PEDIDOS A PROVEEDORES ========================
+// ============================================================
+const WEBHOOK_PEDIDOS='https://n8n.mahra-ai.online/webhook/pedidos';
+const WEBHOOK_PED_GUARDAR='https://n8n.mahra-ai.online/webhook/pedidos-guardar';
+const WEBHOOK_PED_BORRAR='https://n8n.mahra-ai.online/webhook/pedidos-borrar';
+const WEBHOOK_ENT_GUARDAR='https://n8n.mahra-ai.online/webhook/entregas-guardar';
+const WEBHOOK_ENT_BORRAR='https://n8n.mahra-ai.online/webhook/entregas-borrar';
+const PED_MAX_FILAS=500;
+
+let pedLineas=[];          // líneas crudas del servidor
+let pedEntregas=[];        // entregas crudas del servidor
+let pedDatos=[];           // líneas de la temporada activa, con los totales calculados
+let pedOk=false;           // ¿pudimos leer la API?
+let pedCargando=false;
+let pedSort={k:'fecha',dir:'desc'};
+let pedAbierta=null;       // id_linea con las entregas desplegadas
+
+function pedId(p){return p+'-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);}
+function pedUp(v){return String(v==null?'':v).trim().toUpperCase();}
+function pedNum(v){const n=Number(v);return isFinite(n)?n:0;}
+function pedHoy(){const d=new Date();const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+function pedFechaCorta(s){const m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+'/'+m[2]+'/'+m[1].slice(2):(s||'');}
+function pedEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function pedAviso(txt){
+  const el=document.getElementById('pedAviso');if(!el)return;
+  if(!txt){el.style.display='none';el.textContent='';return;}
+  el.textContent='⚠ '+txt;el.style.display='block';
+}
+function pedMsg(id,txt,ok){
+  const e=document.getElementById(id);if(!e)return;
+  e.textContent=txt||'';
+  e.style.color=ok===false?'var(--red)':(ok?'var(--green)':'var(--muted2)');
+}
+
+function pedTemporadaActiva(){return pedUp(document.getElementById('pedTemporada').value);}
+function pedTodasTemporadas(){const c=document.getElementById('pedTodasTemp');return !!(c&&c.checked);}
+
+// ---------- carga ----------
+async function pedCargar(forzar){
+  if(pedCargando)return;
+  if(pedOk&&!forzar){renderPed();return;}
+  pedCargando=true;
+  const b=document.getElementById('btnPedRecargar');if(b)b.disabled=true;
+  try{
+    const r=await fetch(WEBHOOK_PEDIDOS,{cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const t=await r.text();
+    if(!t.trim())throw new Error('respuesta vacía del servidor');
+    const d=JSON.parse(t);
+    pedLineas=(d.lineas||[]).filter(x=>x&&x.id_linea);
+    pedEntregas=(d.entregas||[]).filter(x=>x&&x.id_entrega);
+    pedOk=true;pedAviso('');
+  }catch(e){
+    pedOk=false;
+    pedAviso('No se pudieron leer los pedidos del servidor ('+e.message+'). No se puede cargar ni modificar nada hasta que vuelva.');
+  }finally{
+    pedCargando=false;
+    const b2=document.getElementById('btnPedRecargar');if(b2)b2.disabled=false;
+  }
+  pedInicializarControles();
+  renderPed();
+}
+
+// Deja la temporada activa y los desplegables listos la primera vez.
+let pedControlesListos=false;
+function pedInicializarControles(){
+  const t=document.getElementById('pedTemporada');
+  const temps=[...new Set(pedLineas.map(l=>pedUp(l.temporada)).filter(Boolean))].sort().reverse();
+  const dl=document.getElementById('pedTempList');
+  if(dl)dl.innerHTML=temps.map(v=>`<option value="${pedEsc(v)}">`).join('');
+  if(t&&!t.value)t.value=temps[0]||'';
+  ['pfFecha','peFecha'].forEach(id=>{const e=document.getElementById(id);if(e&&!e.value)e.value=pedHoy();});
+  pedControlesListos=true;
+}
+function pedTempCambio(){renderPed();}
+
+// ---------- cálculo ----------
+function pedConstruir(){
+  const porLinea={};
+  pedEntregas.forEach(e=>{
+    const k=String(e.id_linea||'');
+    if(!porLinea[k])porLinea[k]=[];
+    porLinea[k].push({id_entrega:e.id_entrega,fecha:String(e.fecha||''),cantidad:pedNum(e.cantidad),origen:String(e.origen||'manual'),ref:String(e.ref||''),obs:String(e.obs||'')});
+  });
+  Object.values(porLinea).forEach(a=>a.sort((x,y)=>String(x.fecha).localeCompare(String(y.fecha))));
+  const temp=pedTemporadaActiva(),todas=pedTodasTemporadas();
+  pedDatos=pedLineas.filter(l=>todas||!temp||pedUp(l.temporada)===temp).map(l=>{
+    const ents=porLinea[String(l.id_linea)]||[];
+    const entregado=ents.reduce((s,e)=>s+e.cantidad,0);
+    const cantidad=pedNum(l.cantidad),costo=pedNum(l.costo);
+    const pendiente=cantidad-entregado;
+    return{
+      id_linea:String(l.id_linea),temporada:pedUp(l.temporada),fecha:String(l.fecha||''),
+      marca:pedUp(l.marca),articulo:pedUp(l.articulo),art_sistema:pedUp(l.art_sistema),
+      color:pedUp(l.color),obs:String(l.obs||''),
+      cantidad:cantidad,costo:costo,total:cantidad*costo,
+      entregado:entregado,entregadoM:entregado*costo,
+      pendiente:pendiente,pendienteM:pendiente*costo,
+      entregas:ents
+    };
+  });
+  return pedDatos;
+}
+
+// Líneas que quedan con los filtros de la pestaña.
+function pedFiltrar(){
+  const marca=document.getElementById('pedMarca').value;
+  const estado=document.getElementById('pedEstado').value;
+  const q=pedUp(document.getElementById('pedBuscar').value);
+  return pedDatos.filter(d=>{
+    if(marca&&d.marca!==marca)return false;
+    if(estado==='pendiente'&&d.pendiente<=0)return false;
+    if(estado==='completo'&&d.pendiente!==0)return false;
+    if(estado==='sinentregas'&&d.entregas.length)return false;
+    if(estado==='demas'&&d.pendiente>=0)return false;
+    if(q&&(d.articulo+' '+d.art_sistema+' '+d.color+' '+d.marca+' '+d.obs).indexOf(q)<0)return false;
+    return true;
+  });
+}
+
+function sortPed(k){
+  if(pedSort.k===k)pedSort.dir=pedSort.dir==='asc'?'desc':'asc';
+  else{pedSort.k=k;pedSort.dir=(k==='fecha')?'desc':'asc';}
+  renderPed();
+}
+
+// ---------- render ----------
+function renderPed(){
+  const body=document.getElementById('pedBody');if(!body)return;
+  pedConstruir();
+
+  // desplegables que dependen de los datos
+  const marcas=[...new Set(pedLineas.map(l=>pedUp(l.marca)).filter(Boolean))].sort();
+  const selM=document.getElementById('pedMarca');
+  if(selM){
+    const v=selM.value;
+    selM.innerHTML='<option value="">Todas</option>'+marcas.map(m=>`<option value="${pedEsc(m)}">${pedEsc(m)}</option>`).join('');
+    selM.value=marcas.indexOf(v)>=0?v:'';
+  }
+  const dlM=document.getElementById('pedMarcaList');
+  if(dlM)dlM.innerHTML=marcas.map(m=>`<option value="${pedEsc(m)}">`).join('');
+  const colores=[...new Set(pedLineas.map(l=>pedUp(l.color)).filter(Boolean))].sort();
+  const dlC=document.getElementById('pedColorList');
+  if(dlC)dlC.innerHTML=colores.map(c=>`<option value="${pedEsc(c)}">`).join('');
+  // para la entrada: solo lo que tiene pendiente
+  const pend=pedDatos.filter(d=>d.pendiente>0);
+  const dlPA=document.getElementById('pedPendArtList');
+  if(dlPA)dlPA.innerHTML=[...new Set(pend.map(d=>d.articulo))].sort().map(a=>`<option value="${pedEsc(a)}">`).join('');
+  const dlPC=document.getElementById('pedPendColorList');
+  if(dlPC)dlPC.innerHTML=[...new Set(pend.map(d=>d.color))].sort().map(c=>`<option value="${pedEsc(c)}">`).join('');
+
+  const rows=pedFiltrar();
+
+  // scorecards
+  const T=rows.reduce((a,d)=>{
+    a.cant+=d.cantidad;a.total+=d.total;
+    a.entr+=Math.min(d.entregado,d.cantidad);a.entrM+=Math.min(d.entregado,d.cantidad)*d.costo;
+    a.pend+=Math.max(d.pendiente,0);a.pendM+=Math.max(d.pendiente,0)*d.costo;
+    return a;
+  },{cant:0,total:0,entr:0,entrM:0,pend:0,pendM:0});
+  const sc=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  sc('scPedTotal',fmtARS(T.total));sc('scPedTotalSub',fmtN(T.cant)+' pares pedidos');
+  sc('scPedEntr',fmtARS(T.entrM));sc('scPedEntrSub',fmtN(T.entr)+' pares entregados');
+  sc('scPedPend',fmtARS(T.pendM));sc('scPedPendSub',fmtN(T.pend)+' pares pendientes');
+  sc('scPedPct',T.cant>0?Math.round(T.entr/T.cant*100)+'%':'—');
+  sc('scPedLineas',fmtN(rows.length));
+  const temp=pedTemporadaActiva();
+  sc('scPedLineasSub',pedTodasTemporadas()?'todas las temporadas':(temp?('temporada '+temp):'sin temporada'));
+
+  renderPedResumen(rows);
+
+  // orden
+  const k=pedSort.k,mul=pedSort.dir==='asc'?1:-1;
+  rows.sort((a,b)=>{
+    const va=a[k],vb=b[k];
+    if(typeof va==='string'||typeof vb==='string')return String(va).localeCompare(String(vb))*mul;
+    if(va===vb)return String(a.articulo+a.color).localeCompare(String(b.articulo+b.color));
+    return (va-vb)*mul;
+  });
+  ['fecha','marca','articulo','color','cantidad','costo','total','entregado','pendiente','pendienteM'].forEach(c=>{
+    const e=document.getElementById('px-'+c);
+    if(e)e.textContent=(pedSort.k===c)?(pedSort.dir==='asc'?'▲':'▼'):'';
+  });
+
+  const total=rows.length,vis=rows.slice(0,PED_MAX_FILAS);
+  const corte=document.getElementById('pedCorte');
+  if(corte)corte.textContent=total>PED_MAX_FILAS
+    ? 'Mostrando '+PED_MAX_FILAS+' de '+fmtN(total)+' líneas · el Excel baja todas'
+    : fmtN(total)+' línea'+(total===1?'':'s');
+
+  if(!vis.length){
+    body.innerHTML='<tr><td colspan="13" class="empty-state">'+(pedLineas.length?'Sin líneas con estos filtros':'Todavía no hay pedidos cargados')+'</td></tr>';
+    return;
+  }
+
+  body.innerHTML=vis.map(d=>{
+    const estadoCol=d.pendiente<0?'var(--red)':(d.pendiente===0?'var(--green)':'var(--yellow)');
+    const abierta=pedAbierta===d.id_linea;
+    let h=`<tr>
+      <td style="cursor:pointer;color:var(--accent);user-select:none" onclick="pedToggleEntregas('${d.id_linea}')" title="Ver las entradas de esta línea">${abierta?'▾':'▸'}</td>
+      <td>${pedFechaCorta(d.fecha)}</td>
+      <td>${pedEsc(d.marca)}</td>
+      <td>${pedEsc(d.articulo)}</td>
+      <td><input type="text" class="art-inp" style="width:110px;text-align:left;text-transform:uppercase" value="${pedEsc(d.art_sistema)}" placeholder="—" data-id="${d.id_linea}" ${pedOk?'':'disabled'} onchange="pedEditarArtSistema(this)"></td>
+      <td>${pedEsc(d.color)}</td>
+      <td class="td-num">${fmtN(d.cantidad)}</td>
+      <td class="td-num">${fmtARS(d.costo)}</td>
+      <td class="td-num">${fmtARS(d.total)}</td>
+      <td class="td-num" style="color:${d.entregado?'var(--green)':'var(--muted2)'}">${fmtN(d.entregado)}</td>
+      <td class="td-num" style="color:${estadoCol}">${fmtN(d.pendiente)}</td>
+      <td class="td-num" style="color:${estadoCol}">${d.pendiente?fmtARS(d.pendienteM):'·'}</td>
+      <td style="white-space:nowrap"><span class="ped-del" title="Borrar esta línea de pedido" onclick="pedBorrarLinea('${d.id_linea}')">✕</span></td>
+    </tr>`;
+    if(abierta){
+      const ents=d.entregas;
+      h+=`<tr class="ped-sub"><td></td><td colspan="12">`;
+      if(!ents.length)h+='<span style="color:var(--muted2)">Sin entradas registradas todavía.</span>';
+      else h+='<table class="ped-ent"><thead><tr><th>Fecha</th><th class="td-num">Cantidad</th><th>Origen</th><th>Ref.</th><th></th></tr></thead><tbody>'
+        +ents.map(e=>`<tr><td>${pedFechaCorta(e.fecha)}</td><td class="td-num">${fmtN(e.cantidad)}</td><td>${pedEsc(e.origen)}</td><td>${pedEsc(e.ref)||'·'}</td><td><span class="ped-del" title="Borrar esta entrada" onclick="pedBorrarEntrega('${e.id_entrega}')">✕</span></td></tr>`).join('')
+        +'</tbody></table>';
+      h+='</td></tr>';
+    }
+    return h;
+  }).join('');
+}
+
+function renderPedResumen(rows){
+  const el=document.getElementById('pedResumen');if(!el)return;
+  const M={};
+  rows.forEach(d=>{
+    const m=d.marca||'(sin marca)';
+    if(!M[m])M[m]={cant:0,total:0,entr:0,entrM:0,pend:0,pendM:0};
+    const a=M[m];
+    a.cant+=d.cantidad;a.total+=d.total;
+    const e=Math.min(d.entregado,d.cantidad),p=Math.max(d.pendiente,0);
+    a.entr+=e;a.entrM+=e*d.costo;a.pend+=p;a.pendM+=p*d.costo;
+  });
+  const marcas=Object.keys(M).sort();
+  if(!marcas.length){el.innerHTML='<tbody><tr><td class="empty-state">Sin datos</td></tr></tbody>';return;}
+  const G={cant:0,total:0,entr:0,entrM:0,pend:0,pendM:0};
+  marcas.forEach(m=>{Object.keys(G).forEach(k=>G[k]+=M[m][k]);});
+  const fila=(nombre,a,clase)=>{
+    const pct=a.cant>0?Math.round(a.entr/a.cant*100):0;
+    return `<tr${clase?' class="'+clase+'"':''}>
+      <td>${pedEsc(nombre)}</td>
+      <td class="td-num">${fmtN(a.cant)}</td>
+      <td class="td-num">${fmtN(a.entr)}</td>
+      <td class="td-num">${a.pend?fmtN(a.pend):'·'}</td>
+      <td class="td-num">${fmtARS(a.total)}</td>
+      <td class="td-num">${fmtARS(a.entrM)}</td>
+      <td class="td-num">${a.pendM?fmtARS(a.pendM):'·'}</td>
+      <td class="td-num" style="color:${pct===100?'var(--green)':(pct<50?'var(--red)':'var(--yellow)')}">${pct}%</td>
+    </tr>`;
+  };
+  el.innerHTML='<thead><tr><th>Marca</th><th class="td-num">Pedido</th><th class="td-num">Entregado</th><th class="td-num">Pendiente</th>'
+    +'<th class="td-num">$ Pedido</th><th class="td-num">$ Entregado</th><th class="td-num">$ Pendiente</th><th class="td-num">% Entrega</th></tr></thead><tbody>'
+    +marcas.map(m=>fila(m,M[m])).join('')
+    +fila('TOTAL',G,'tot-row')
+    +'</tbody>';
+}
+
+function pedToggleEntregas(id){pedAbierta=(pedAbierta===id)?null:id;renderPed();}
+
+// ---------- escritura ----------
+async function pedPost(url,body){
+  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const t=await r.text();
+  if(!r.ok)throw new Error('HTTP '+r.status+(t?' · '+t.slice(0,120):''));
+  return t;
+}
+
+async function pedAgregarLinea(){
+  if(!pedOk){pedMsg('pfMsg','Sin conexión con el servidor',false);return;}
+  const temporada=pedTemporadaActiva();
+  const fecha=document.getElementById('pfFecha').value;
+  const marca=pedUp(document.getElementById('pfMarca').value);
+  const articulo=pedUp(document.getElementById('pfArticulo').value);
+  const artSis=pedUp(document.getElementById('pfArtSistema').value);
+  const color=pedUp(document.getElementById('pfColor').value);
+  const cantidad=Math.round(pedNum(document.getElementById('pfCantidad').value));
+  const costo=pedNum(document.getElementById('pfCosto').value);
+  const obs=document.getElementById('pfObs').value.trim();
+
+  if(!temporada){pedMsg('pfMsg','Poné la temporada arriba',false);return;}
+  if(!fecha){pedMsg('pfMsg','Falta la fecha del pedido',false);return;}
+  if(!marca){pedMsg('pfMsg','Falta la marca',false);return;}
+  if(!articulo){pedMsg('pfMsg','Falta el artículo',false);return;}
+  if(!color){pedMsg('pfMsg','Falta el color',false);return;}
+  if(!(cantidad>0)){pedMsg('pfMsg','La cantidad tiene que ser mayor a 0',false);return;}
+  if(!(costo>0)){pedMsg('pfMsg','Falta el costo unitario',false);return;}
+
+  const rep=pedDatos.find(d=>d.marca===marca&&d.articulo===articulo&&d.color===color&&d.fecha===fecha);
+  if(rep){pedMsg('pfMsg','Ya hay una línea igual con esa misma fecha — si es una reposición, cambiá la fecha',false);return;}
+
+  const btn=document.getElementById('btnPedAgregar');btn.disabled=true;
+  pedMsg('pfMsg','Guardando…');
+  const fila={id_linea:pedId('L'),temporada,fecha,marca,articulo,art_sistema:artSis,color,cantidad,costo,obs};
+  try{
+    await pedPost(WEBHOOK_PED_GUARDAR,{lineas:[fila]});
+    pedLineas.push(fila);
+    // se deja todo listo para el color siguiente del mismo artículo
+    document.getElementById('pfColor').value='';
+    document.getElementById('pfCantidad').value='';
+    document.getElementById('pfColor').focus();
+    renderPed();
+    pedMsg('pfMsg','✓ '+articulo+' '+color+' · '+fmtN(cantidad)+' × '+fmtARS(costo),true);
+  }catch(e){
+    pedMsg('pfMsg','Error al guardar: '+e.message,false);
+  }finally{btn.disabled=false;}
+}
+
+async function pedEditarArtSistema(el){
+  if(!pedOk)return;
+  const id=el.dataset.id,valor=pedUp(el.value);
+  const orig=pedLineas.find(l=>String(l.id_linea)===id);
+  if(!orig)return;
+  if(pedUp(orig.art_sistema)===valor)return;
+  const antes=orig.art_sistema;
+  orig.art_sistema=valor;
+  pedMsg('pedSaveMsg','Guardando…');
+  try{
+    await pedPost(WEBHOOK_PED_GUARDAR,{lineas:[{
+      id_linea:orig.id_linea,temporada:orig.temporada,fecha:orig.fecha,marca:orig.marca,
+      articulo:orig.articulo,art_sistema:valor,color:orig.color,
+      cantidad:pedNum(orig.cantidad),costo:pedNum(orig.costo),obs:orig.obs||''
+    }]});
+    pedMsg('pedSaveMsg','✓ guardado',true);
+    renderPed();
+  }catch(e){
+    orig.art_sistema=antes;
+    pedMsg('pedSaveMsg','Error: '+e.message,false);
+    renderPed();
+  }
+}
+
+// Reparto FIFO: se cancela primero el pedido más viejo con pendiente.
+// El excedente va a la última línea (se puede recibir de más y hay que poder registrarlo).
+function pedRepartir(articulo,color,cantidad){
+  const candidatas=pedDatos
+    .filter(d=>d.articulo===articulo&&d.color===color)
+    .sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha)));
+  if(!candidatas.length)return{error:'No hay ninguna línea de pedido con ese artículo y color en la temporada activa.'};
+  const conPendiente=candidatas.filter(d=>d.pendiente>0);
+  const reparto=[];let resta=cantidad;
+  conPendiente.forEach(d=>{
+    if(resta<=0)return;
+    const toma=Math.min(d.pendiente,resta);
+    reparto.push({linea:d,cantidad:toma});
+    resta-=toma;
+  });
+  let excedente=0;
+  if(resta>0){
+    excedente=resta;
+    const ultima=candidatas[candidatas.length-1];
+    const ya=reparto.find(x=>x.linea.id_linea===ultima.id_linea);
+    if(ya)ya.cantidad+=resta;else reparto.push({linea:ultima,cantidad:resta});
+  }
+  return{reparto,excedente,candidatas};
+}
+
+function pedPreviaEntrada(){
+  const el=document.getElementById('pePrevia');if(!el)return;
+  const articulo=pedUp(document.getElementById('peArticulo').value);
+  const color=pedUp(document.getElementById('peColor').value);
+  const cantidad=Math.round(pedNum(document.getElementById('peCantidad').value));
+  if(!articulo||!color||!(cantidad>0)){el.innerHTML='';return;}
+  const r=pedRepartir(articulo,color,cantidad);
+  if(r.error){el.innerHTML='<span style="color:var(--red)">'+pedEsc(r.error)+'</span>';return;}
+  el.innerHTML='Se va a imputar así: '+r.reparto.map(x=>
+    '<b>'+fmtN(x.cantidad)+'</b> al pedido del '+pedFechaCorta(x.linea.fecha)+' ('+pedEsc(x.linea.marca)+', quedan '+fmtN(Math.max(x.linea.pendiente-x.cantidad,0))+')'
+  ).join(' · ')+(r.excedente?' <span style="color:var(--red)">· '+fmtN(r.excedente)+' de más de lo pedido</span>':'');
+}
+
+async function pedRegistrarEntrada(){
+  if(!pedOk){pedMsg('peMsg','Sin conexión con el servidor',false);return;}
+  const fecha=document.getElementById('peFecha').value;
+  const articulo=pedUp(document.getElementById('peArticulo').value);
+  const color=pedUp(document.getElementById('peColor').value);
+  const cantidad=Math.round(pedNum(document.getElementById('peCantidad').value));
+  if(!fecha){pedMsg('peMsg','Falta la fecha de la entrada',false);return;}
+  if(!articulo||!color){pedMsg('peMsg','Falta el artículo o el color',false);return;}
+  if(!(cantidad>0)){pedMsg('peMsg','La cantidad tiene que ser mayor a 0',false);return;}
+  const r=pedRepartir(articulo,color,cantidad);
+  if(r.error){pedMsg('peMsg',r.error,false);return;}
+
+  const btn=document.getElementById('btnPedEntrada');btn.disabled=true;
+  pedMsg('peMsg','Registrando…');
+  const nuevas=r.reparto.map(x=>({id_entrega:pedId('E'),id_linea:x.linea.id_linea,fecha,cantidad:x.cantidad,origen:'manual',ref:'',obs:''}));
+  try{
+    await pedPost(WEBHOOK_ENT_GUARDAR,{entregas:nuevas});
+    nuevas.forEach(e=>pedEntregas.push(e));
+    document.getElementById('peCantidad').value='';
+    document.getElementById('pePrevia').innerHTML='';
+    renderPed();
+    pedMsg('peMsg','✓ '+fmtN(cantidad)+' de '+articulo+' '+color+' en '+nuevas.length+' pedido'+(nuevas.length===1?'':'s')+(r.excedente?' ('+fmtN(r.excedente)+' de más)':''),true);
+  }catch(e){
+    pedMsg('peMsg','Error al registrar: '+e.message,false);
+  }finally{btn.disabled=false;}
+}
+
+let pedBorrarPendiente=null,pedBorrarTimer=null;
+function pedCancelarBorrado(){
+  pedBorrarPendiente=null;
+  if(pedBorrarTimer){clearTimeout(pedBorrarTimer);pedBorrarTimer=null;}
+}
+async function pedBorrarLinea(id){
+  if(!pedOk)return;
+  const d=pedDatos.find(x=>x.id_linea===id);if(!d)return;
+  if(pedBorrarPendiente!==id){
+    pedCancelarBorrado();
+    pedBorrarPendiente=id;
+    pedMsg('pedSaveMsg','Volvé a apretar la ✕ de '+d.articulo+' '+d.color+' para borrarla'+(d.entregas.length?' (se borran también sus '+d.entregas.length+' entrada'+(d.entregas.length===1?'':'s')+')':''),false);
+    pedBorrarTimer=setTimeout(()=>{pedCancelarBorrado();pedMsg('pedSaveMsg','');},6000);
+    return;
+  }
+  pedCancelarBorrado();
+  pedMsg('pedSaveMsg','Borrando…');
+  try{
+    if(d.entregas.length)await pedPost(WEBHOOK_ENT_BORRAR,{ids:d.entregas.map(e=>e.id_entrega)});
+    await pedPost(WEBHOOK_PED_BORRAR,{ids:[id]});
+    pedEntregas=pedEntregas.filter(e=>String(e.id_linea)!==id);
+    pedLineas=pedLineas.filter(l=>String(l.id_linea)!==id);
+    if(pedAbierta===id)pedAbierta=null;
+    renderPed();
+    pedMsg('pedSaveMsg','✓ línea borrada',true);
+  }catch(e){pedMsg('pedSaveMsg','Error al borrar: '+e.message,false);}
+}
+
+async function pedBorrarEntrega(id){
+  if(!pedOk)return;
+  pedMsg('pedSaveMsg','Borrando la entrada…');
+  try{
+    await pedPost(WEBHOOK_ENT_BORRAR,{ids:[id]});
+    pedEntregas=pedEntregas.filter(e=>String(e.id_entrega)!==id);
+    renderPed();
+    pedMsg('pedSaveMsg','✓ entrada borrada',true);
+  }catch(e){pedMsg('pedSaveMsg','Error al borrar: '+e.message,false);}
+}
+
+function pedExcel(){
+  const rows=pedFiltrar();
+  if(!rows.length){showError('No hay líneas para exportar con estos filtros.');return;}
+  const HEAD=['TEMPORADA','FECHA','MARCA','ARTICULO','ART_SISTEMA','COLOR','CANTIDAD','COSTO','TOTAL','ENTREGADO','PENDIENTE','TOTAL_ENTREGADO','TOTAL_PENDIENTE','ENTRADAS','OBS'];
+  const datos=rows.sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha))||a.marca.localeCompare(b.marca)).map(d=>({
+    TEMPORADA:d.temporada,FECHA:d.fecha,MARCA:d.marca,ARTICULO:d.articulo,ART_SISTEMA:d.art_sistema,COLOR:d.color,
+    CANTIDAD:d.cantidad,COSTO:d.costo,TOTAL:d.total,
+    ENTREGADO:d.entregado,PENDIENTE:d.pendiente,
+    TOTAL_ENTREGADO:Math.min(d.entregado,d.cantidad)*d.costo,
+    TOTAL_PENDIENTE:Math.max(d.pendiente,0)*d.costo,
+    ENTRADAS:d.entregas.map(e=>pedFechaCorta(e.fecha)+': '+e.cantidad).join(' | '),
+    OBS:d.obs
+  }));
+  const ws=XLSX.utils.json_to_sheet(datos,{header:HEAD});
+  ws['!cols']=[{wch:10},{wch:11},{wch:10},{wch:14},{wch:14},{wch:9},{wch:9},{wch:12},{wch:13},{wch:10},{wch:10},{wch:15},{wch:15},{wch:30},{wch:16}];
+  ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:datos.length,c:HEAD.length-1}})};
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Pedidos');
+  const h=new Date(),p=n=>String(n).padStart(2,'0');
+  XLSX.writeFile(wb,'PEDIDOS_'+(pedTemporadaActiva()||'TODAS')+'_'+h.getFullYear()+'_'+p(h.getMonth()+1)+'_'+p(h.getDate())+'.xlsx');
+  setStatus('Excel: '+fmtN(datos.length)+' líneas de pedido',true);
 }
 
 function showError(m){const el=document.getElementById('errorMsg');el.textContent='⚠ '+m;el.style.display='block';}
