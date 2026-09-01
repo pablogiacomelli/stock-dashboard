@@ -94,6 +94,8 @@ main{padding:28px 40px}
 .art-inp:focus{border-color:var(--accent)}
 .art-inp::placeholder{color:var(--muted2);opacity:.7}
 .art-inp:disabled{opacity:.35;cursor:not-allowed}
+.ms-buscar{position:sticky;top:-6px;z-index:2;width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--font-mono);font-size:11px;padding:4px 6px;outline:none;margin-bottom:5px;box-sizing:border-box}
+.ms-buscar:focus{border-color:var(--accent)}
 .art-reset{color:var(--accent);cursor:pointer;font-size:13px;margin-left:5px;user-select:none}
 .art-reset:hover{opacity:.6}
 .col-filter{background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--font-mono);font-size:10px;padding:2px 4px;margin-top:5px;cursor:pointer;outline:none;display:block;text-transform:none;letter-spacing:0}
@@ -338,7 +340,7 @@ footer{padding:20px 40px;border-top:1px solid var(--border);font-size:10px;color
     <div class="chart-header" style="margin-bottom:14px">
       <div>
         <div class="chart-title">Análisis por Artículo · Temporada · Color</div>
-        <div class="chart-subtitle">La venta semanal se calcula sobre la ventana propia de abajo (no sobre el rango de fechas del encabezado). El stock es el actual. Respeta los filtros de Temporada / Marca / Rubro.</div>
+        <div class="chart-subtitle">La venta semanal se calcula sobre la ventana propia de abajo (no sobre el rango de fechas del encabezado). El stock es el actual. Los filtros de Artículo / Temporada / Color se suman a los de Temporada / Marca / Rubro del encabezado.</div>
       </div>
     </div>
 
@@ -351,6 +353,33 @@ footer{padding:20px 40px;border-top:1px solid var(--border);font-size:10px;color
         <button class="preset-btn" id="btnArtV26" onclick="setArtVentana(26)">26 sem</button>
       </div>
 
+      <span class="range-label">Artículo</span>
+      <div class="ms" id="amsArt">
+        <button type="button" class="ms-btn" onclick="amsToggle('Art')"><span id="amsArtLbl">Todos</span> ▾</button>
+        <div class="ms-panel">
+          <input type="text" class="ms-buscar" id="amsArtQ" placeholder="buscar artículo…" oninput="amsBuscar('Art',this)" onclick="event.stopPropagation()">
+          <div class="ms-actions"><span onclick="amsAll('Art',true)">Todos</span><span onclick="amsAll('Art',false)">Ninguno</span></div>
+          <div id="amsArtList"></div>
+        </div>
+      </div>
+      <span class="range-label">Temporada</span>
+      <div class="ms" id="amsTemp">
+        <button type="button" class="ms-btn" onclick="amsToggle('Temp')"><span id="amsTempLbl">Todas</span> ▾</button>
+        <div class="ms-panel">
+          <input type="text" class="ms-buscar" id="amsTempQ" placeholder="buscar temporada…" oninput="amsBuscar('Temp',this)" onclick="event.stopPropagation()">
+          <div class="ms-actions"><span onclick="amsAll('Temp',true)">Todas</span><span onclick="amsAll('Temp',false)">Ninguno</span></div>
+          <div id="amsTempList"></div>
+        </div>
+      </div>
+      <span class="range-label">Color</span>
+      <div class="ms" id="amsCol">
+        <button type="button" class="ms-btn" onclick="amsToggle('Col')"><span id="amsColLbl">Todos</span> ▾</button>
+        <div class="ms-panel">
+          <input type="text" class="ms-buscar" id="amsColQ" placeholder="buscar color…" oninput="amsBuscar('Col',this)" onclick="event.stopPropagation()">
+          <div class="ms-actions"><span onclick="amsAll('Col',true)">Todos</span><span onclick="amsAll('Col',false)">Ninguno</span></div>
+          <div id="amsColList"></div>
+        </div>
+      </div>
       <span class="range-label" style="margin-left:8px">Mostrar</span>
       <select class="date-input" id="artEstado" onchange="renderArt()">
         <option value="alertas">Solo alertas</option>
@@ -414,6 +443,8 @@ footer{padding:20px 40px;border-top:1px solid var(--border);font-size:10px;color
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <span id="artSaveMsg" style="font-size:10px;font-family:var(--font-mono);color:var(--muted2)"></span>
+        <button class="preset-btn" id="btnSeguirTodo" onclick="artSeguimientoMasivo(true)" title="Tilda el seguimiento en TODAS las filas del filtro actual, no solo en las visibles">☑ Seguir todo</button>
+        <button class="preset-btn" id="btnSeguirNada" onclick="artSeguimientoMasivo(false)" title="Destilda el seguimiento en TODAS las filas del filtro actual">☐ Dejar de seguir</button>
         <button class="preset-btn" id="btnArtGuardar" onclick="artGuardarFilas()">Guardar umbrales</button>
       </div>
     </div>
@@ -1352,6 +1383,73 @@ let artUmbralesOk=false;       // ¿pudimos leer la API?
 let artModo='todas';           // 'todas' = avisa todas las alertas · 'marcadas' = solo las que tienen seguimiento tildado
 let artSort={k:'sev',dir:'asc'};
 
+// --- Multiselect propio de la pestaña (Artículo / Temporada / Color) ---
+// AMS = tildados · AMSOPTS = universo · AMSQ = búsqueda dentro del panel.
+// Convención igual que el resto del dashboard: nada tildado (o todo) = "Todos".
+const AMS={Art:new Set(),Temp:new Set(),Col:new Set()};
+const AMSOPTS={Art:[],Temp:[],Col:[]};
+const AMSQ={Art:'',Temp:'',Col:''};
+const AMS_CAMPO={Art:'articulo',Temp:'temporada',Col:'color'};
+const AMS_TODOS={Art:'Todos',Temp:'Todas',Col:'Todos'};
+
+function amsSel(k){const n=AMS[k].size,t=AMSOPTS[k].length;return(n===0||n===t)?[]:[...AMS[k]];}
+function amsVisibles(k){
+  const q=AMSQ[k].trim().toUpperCase();
+  return q?AMSOPTS[k].filter(v=>v.toUpperCase().indexOf(q)>=0):AMSOPTS[k];
+}
+function amsToggle(k){
+  const el=document.getElementById('ams'+k);
+  const abierto=el.classList.contains('open');
+  document.querySelectorAll('.ms').forEach(x=>x.classList.remove('open'));
+  if(!abierto){el.classList.add('open');const b=document.getElementById('ams'+k+'Q');if(b)setTimeout(()=>b.focus(),0);}
+}
+function amsBuscar(k,el){AMSQ[k]=el.value;amsPintarLista(k);}
+function amsPintarLista(k){
+  const list=document.getElementById('ams'+k+'List');if(!list)return;
+  const opts=amsVisibles(k);
+  list.innerHTML=opts.length
+    ? opts.map(v=>`<label class="ms-item"><input type="checkbox" value="${v.replace(/"/g,'&quot;')}" ${AMS[k].has(v)?'checked':''} onchange="amsChange('${k}',this)">${v||'(vacío)'}</label>`).join('')
+    : '<div class="ms-empty">sin coincidencias</div>';
+}
+function amsRender(k){amsPintarLista(k);amsLabel(k);}
+function amsChange(k,cb){
+  if(cb.checked)AMS[k].add(cb.value);else AMS[k].delete(cb.value);
+  amsLabel(k);renderArt();
+}
+// "Todos" / "Ninguno" actúan sobre lo que se ve con la búsqueda actual, no sobre todo el universo.
+function amsAll(k,on){
+  const vis=amsVisibles(k);
+  if(on&&!AMSQ[k].trim()){AMS[k].clear();AMSOPTS[k].forEach(v=>AMS[k].add(v));}
+  else if(!on&&!AMSQ[k].trim())AMS[k].clear();
+  else vis.forEach(v=>{if(on)AMS[k].add(v);else AMS[k].delete(v);});
+  amsRender(k);renderArt();
+}
+function amsLabel(k){
+  const n=AMS[k].size,tot=AMSOPTS[k].length;
+  const cont=document.getElementById('ams'+k),lbl=document.getElementById('ams'+k+'Lbl');
+  if(!cont||!lbl)return;
+  const todos=(n===0||n===tot);
+  lbl.textContent=todos?AMS_TODOS[k]:(n===1?([...AMS[k]][0]||'(vacío)'):n+' seleccionad'+(k==='Temp'?'as':'os'));
+  cont.classList.toggle('sel',!todos);
+}
+// Recalcula el universo de opciones a partir de las combinaciones que pasan los filtros del ENCABEZADO.
+// Si un valor desaparece de los datos, se saca también de la selección.
+function amsSyncOpciones(combos){
+  ['Art','Temp','Col'].forEach(k=>{
+    const campo=AMS_CAMPO[k];
+    const set=new Set();
+    combos.forEach(d=>set.add(d[campo]||''));
+    const nuevo=[...set].sort((a,b)=>k==='Temp'?String(b).localeCompare(String(a)):String(a).localeCompare(String(b)));
+    const cambio=(nuevo.length!==AMSOPTS[k].length)||nuevo.some((v,i)=>v!==AMSOPTS[k][i]);
+    if(cambio)AMSOPTS[k]=nuevo;
+    // La poda va SIEMPRE, aunque la lista de opciones no haya cambiado: si no, un valor
+    // seleccionado que ya no está en los datos sigue filtrando y no hay forma de sacarlo.
+    let podado=false;
+    [...AMS[k]].forEach(v=>{if(!set.has(v)){AMS[k].delete(v);podado=true;}});
+    if(cambio||podado)amsRender(k);
+  });
+}
+
 function artClave(a,t,c){return a+'|'+t+'|'+c;}
 function artNum(v){if(v===null||v===undefined||v==='')return null;const n=Number(v);return isFinite(n)?n:null;}
 function fmt1(n){return (Math.round(n*10)/10).toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1});}
@@ -1413,7 +1511,20 @@ function buildArtData(){
     if(d<desde||d>hasta)return;
     ensure(i).vendido+=parseNum(r.cantidad);
   });
-  artData=Object.values(M).map(d=>{
+  // El universo de opciones sale de TODAS las combinaciones que pasan los filtros del
+  // encabezado, antes de aplicar los filtros de la pestaña: así elegir una temporada no
+  // vacía la lista de colores.
+  // Se descartan acá las combinaciones sin stock y sin ventas: no son señal de nada y no
+  // tienen que ensuciar los desplegables con valores que nunca van a dar una fila.
+  const combos=Object.values(M).filter(d=>d.stock>0||d.vendido!==0);
+  amsSyncOpciones(combos);
+  const selArt=amsSel('Art'),selTemp=amsSel('Temp'),selCol=amsSel('Col');
+  artData=combos.filter(d=>{
+    if(selArt.length&&selArt.indexOf(d.articulo||'')<0)return false;
+    if(selTemp.length&&selTemp.indexOf(d.temporada||'')<0)return false;
+    if(selCol.length&&selCol.indexOf(d.color||'')<0)return false;
+    return true;
+  }).map(d=>{
     d.velocidad=d.vendido/artVentana;
     d.cobertura=d.velocidad>0?d.stock/d.velocidad:Infinity;
     const u=artUmbralDe(d.clave);
@@ -1470,8 +1581,24 @@ function sortArt(k){
   renderArt();
 }
 
+// Filas que quedan con TODOS los filtros de la pestaña (estado + buscador).
+// Los filtros de Artículo/Temporada/Color ya están aplicados en artData.
+// Es el mismo conjunto que ve la tabla, que baja el Excel y sobre el que actúa el masivo.
+function artFiltrarFilas(){
+  const modo=document.getElementById('artEstado').value;
+  const q=document.getElementById('artBuscar').value.trim().toUpperCase();
+  return artData.filter(d=>{
+    if(modo==='alertas'&&!(d.estado==='AGOTADO'||d.estado==='FALTANTE'||d.estado==='SOBRANTE'||d.estado==='SINROT'))return false;
+    if(modo==='propio'&&!d.u.propio)return false;
+    if(modo!=='alertas'&&modo!=='todos'&&modo!=='propio'&&d.estado!==modo)return false;
+    if(q&&(d.articulo+' '+d.temporada+' '+d.color+' '+d.marca).toUpperCase().indexOf(q)<0)return false;
+    return true;
+  });
+}
+
 function renderArt(){
   const body=document.getElementById('artBody');if(!body)return;
+  if(typeof artMasivoCancelar==='function')artMasivoCancelar();  // si cambió el filtro, la confirmación pendiente ya no aplica
   if(!rawStock.length&&!rawVentas.length){
     body.innerHTML='<tr><td colspan="13" class="empty-state">Cargá los datos para ver el análisis</td></tr>';
     return;
@@ -1504,16 +1631,7 @@ function renderArt(){
   if(propLbl)propLbl.textContent=artModo==='marcadas'?'En seguimiento':'Umbrales propios';
   if(propSub)propSub.textContent=artModo==='marcadas'?'las únicas que avisan por Telegram':'filas configuradas a mano';
 
-  // Filtros de la pestaña
-  const modo=document.getElementById('artEstado').value;
-  const q=document.getElementById('artBuscar').value.trim().toUpperCase();
-  let rows=artData.filter(d=>{
-    if(modo==='alertas'&&!(d.estado==='AGOTADO'||d.estado==='FALTANTE'||d.estado==='SOBRANTE'||d.estado==='SINROT'))return false;
-    if(modo==='propio'&&!d.u.propio)return false;
-    if(modo!=='alertas'&&modo!=='todos'&&modo!=='propio'&&d.estado!==modo)return false;
-    if(q&&(d.articulo+' '+d.temporada+' '+d.color+' '+d.marca).toUpperCase().indexOf(q)<0)return false;
-    return true;
-  });
+  let rows=artFiltrarFilas();
 
   // Orden
   const k=artSort.k,mul=artSort.dir==='asc'?1:-1;
@@ -1536,7 +1654,7 @@ function renderArt(){
   const vis=rows.slice(0,ART_MAX_FILAS);
   const corte=document.getElementById('artCorte');
   if(corte)corte.textContent=total>ART_MAX_FILAS
-    ? 'Mostrando '+ART_MAX_FILAS+' de '+fmtN(total)+' filas. Afiná con el buscador o los filtros del encabezado — el Excel baja todas.'
+    ? 'Mostrando '+ART_MAX_FILAS+' de '+fmtN(total)+' filas. Afiná con los filtros de arriba — el Excel y el seguimiento masivo igual toman las '+fmtN(total)+'.'
     : fmtN(total)+' fila'+(total===1?'':'s');
 
   if(!vis.length){
@@ -1709,17 +1827,87 @@ async function artBorrarUmbral(clave){
   }catch(e){artSaveMsg('Error al quitar: '+e.message,false);}
 }
 
+// ¿Cuál es el estado de "seguir" de una combinación que NO tiene fila propia?
+// En modo 'todas' se sigue por defecto; en modo 'marcadas' no.
+function artSeguirPorDefecto(){return artModo!=='marcadas';}
+function artTieneUmbralPropio(o){
+  return !!o&&(artNum(o.stock_min)!==null||artNum(o.cob_min)!==null||artNum(o.cob_max)!==null);
+}
+
+let artMasivoPendiente=null,artMasivoTimer=null;
+function artMasivoCancelar(){
+  artMasivoPendiente=null;
+  if(artMasivoTimer){clearTimeout(artMasivoTimer);artMasivoTimer=null;}
+  const t=document.getElementById('btnSeguirTodo'),d=document.getElementById('btnSeguirNada');
+  if(t)t.textContent='☑ Seguir todo';
+  if(d)d.textContent='☐ Dejar de seguir';
+}
+
+// Aplica el seguimiento a TODAS las filas del filtro actual (no solo a las 400 visibles).
+// Pide una segunda confirmación en el propio botón: nada de diálogos del navegador.
+async function artSeguimientoMasivo(on){
+  if(!artUmbralesOk){artSaveMsg('Sin conexión con el servidor de umbrales',false);return;}
+  const filas=artFiltrarFilas();
+  if(!filas.length){artSaveMsg('No hay filas en el filtro actual');return;}
+
+  const btn=document.getElementById(on?'btnSeguirTodo':'btnSeguirNada');
+  if(artMasivoPendiente!==on){
+    artMasivoCancelar();
+    artMasivoPendiente=on;
+    btn.textContent='¿Confirmás? '+fmtN(filas.length)+' fila'+(filas.length===1?'':'s');
+    artMasivoTimer=setTimeout(artMasivoCancelar,5000);
+    return;
+  }
+  artMasivoCancelar();
+
+  // Una combinación que queda en su estado por defecto y sin umbrales propios no necesita
+  // fila en la tabla: se borra, así no se llena de filas que no dicen nada.
+  const guardar=[],borrar=[];
+  filas.forEach(d=>{
+    const o=artUmbrales[d.clave]||null;
+    if(on===artSeguirPorDefecto()&&!artTieneUmbralPropio(o)){
+      if(o)borrar.push(d.clave);
+      return;
+    }
+    guardar.push({clave:d.clave,articulo:d.articulo,temporada:d.temporada,color:d.color,
+      stock_min:o?artNum(o.stock_min):null,cob_min:o?artNum(o.cob_min):null,cob_max:o?artNum(o.cob_max):null,
+      activo:on});
+  });
+
+  if(!guardar.length&&!borrar.length){artSaveMsg('Ya estaban todas así');return;}
+
+  ['btnSeguirTodo','btnSeguirNada'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=true;});
+  const LOTE=100,total=guardar.length+borrar.length;let hechas=0;
+  try{
+    for(let i=0;i<guardar.length;i+=LOTE){
+      const lote=guardar.slice(i,i+LOTE);
+      artSaveMsg('Guardando '+fmtN(hechas)+'/'+fmtN(total)+'…');
+      await artPost(lote);
+      lote.forEach(f=>{artUmbrales[f.clave]=f;delete artDirty[f.clave];});
+      hechas+=lote.length;
+    }
+    for(let i=0;i<borrar.length;i+=LOTE){
+      const lote=borrar.slice(i,i+LOTE);
+      artSaveMsg('Limpiando '+fmtN(hechas)+'/'+fmtN(total)+'…');
+      const r=await fetch(WEBHOOK_ALERTAS_DEL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({claves:lote})});
+      const t=await r.text();
+      if(!r.ok)throw new Error('HTTP '+r.status+(t?' · '+t.slice(0,120):''));
+      lote.forEach(k=>{delete artUmbrales[k];delete artDirty[k];});
+      hechas+=lote.length;
+    }
+    renderArt();
+    artSaveMsg('✓ '+(on?'seguimiento activado':'seguimiento apagado')+' en '+fmtN(total)+' fila'+(total===1?'':'s'),true);
+  }catch(e){
+    renderArt();
+    artSaveMsg('Se cortó en '+fmtN(hechas)+'/'+fmtN(total)+': '+e.message,false);
+  }finally{
+    ['btnSeguirTodo','btnSeguirNada'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=false;});
+  }
+}
+
 function artExcel(){
   if(!artData.length){showError('No hay datos para exportar. Cargá los datos primero.');return;}
-  const modo=document.getElementById('artEstado').value;
-  const q=document.getElementById('artBuscar').value.trim().toUpperCase();
-  const rows=artData.filter(d=>{
-    if(modo==='alertas'&&!(d.estado==='AGOTADO'||d.estado==='FALTANTE'||d.estado==='SOBRANTE'||d.estado==='SINROT'))return false;
-    if(modo==='propio'&&!d.u.propio)return false;
-    if(modo!=='alertas'&&modo!=='todos'&&modo!=='propio'&&d.estado!==modo)return false;
-    if(q&&(d.articulo+' '+d.temporada+' '+d.color+' '+d.marca).toUpperCase().indexOf(q)<0)return false;
-    return true;
-  }).sort((a,b)=>a.sev-b.sev||b.vendido-a.vendido).map(d=>({
+  const rows=artFiltrarFilas().sort((a,b)=>a.sev-b.sev||b.vendido-a.vendido).map(d=>({
     ARTICULO:d.articulo,TEMPORADA:d.temporada,COLOR:d.color,MARCA:d.marca,
     STOCK:Math.round(d.stock),VENDIDO:Math.round(d.vendido),
     PARES_SEMANA:Math.round(d.velocidad*100)/100,
