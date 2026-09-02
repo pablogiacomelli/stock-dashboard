@@ -99,6 +99,11 @@ main{padding:28px 40px}
 .ped-form{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
 .ped-form label{display:flex;flex-direction:column;gap:4px;font-size:10px;color:var(--muted2);font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase}
 .ped-del{color:var(--muted2);cursor:pointer;font-size:12px;user-select:none;padding:0 4px}
+.ped-edit{color:var(--muted2);cursor:pointer;font-size:12px;user-select:none;padding:0 4px}
+.ped-edit:hover{color:var(--accent)}
+.ped-ok{color:var(--green);cursor:pointer;font-size:13px;user-select:none;padding:0 4px}
+.ped-ok:hover{opacity:.7}
+.ped-editando td{background:rgba(212,168,83,.07)}
 .ped-del:hover{color:var(--red)}
 .ped-sub td{background:var(--surface2);padding:10px 12px}
 .ped-ent{border-collapse:collapse;font-family:var(--font-mono);font-size:10px}
@@ -2081,6 +2086,8 @@ let pedOk=false;           // ¿pudimos leer la API?
 let pedCargando=false;
 let pedSort={k:'fecha',dir:'desc'};
 let pedAbierta=null;       // id_linea con las entregas desplegadas
+let pedEdit=null;          // id_linea que se está editando
+let pedEditEnt=null;       // id_entrega que se está editando
 
 function pedId(p){return p+'-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);}
 function pedUp(v){return String(v==null?'':v).trim().toUpperCase();}
@@ -2264,6 +2271,7 @@ function renderPed(){
   body.innerHTML=vis.map(d=>{
     const estadoCol=d.pendiente<0?'var(--red)':(d.pendiente===0?'var(--green)':'var(--yellow)');
     const abierta=pedAbierta===d.id_linea;
+    if(pedEdit===d.id_linea)return pedFilaEdicion(d);
     let h=`<tr>
       <td style="cursor:pointer;color:var(--accent);user-select:none" onclick="pedToggleEntregas('${d.id_linea}')" title="Ver las entradas de esta línea">${abierta?'▾':'▸'}</td>
       <td>${pedFechaCorta(d.fecha)}</td>
@@ -2277,14 +2285,19 @@ function renderPed(){
       <td class="td-num" style="color:${d.entregado?'var(--green)':'var(--muted2)'}">${fmtN(d.entregado)}</td>
       <td class="td-num" style="color:${estadoCol}">${fmtN(d.pendiente)}</td>
       <td class="td-num" style="color:${estadoCol}">${d.pendiente?fmtARS(d.pendienteM):'·'}</td>
-      <td style="white-space:nowrap"><span class="ped-del" title="Borrar esta línea de pedido" onclick="pedBorrarLinea('${d.id_linea}')">✕</span></td>
+      <td style="white-space:nowrap"><span class="ped-edit" title="Corregir esta línea" onclick="pedEditar('${d.id_linea}')">✎</span><span class="ped-del" title="Borrar esta línea de pedido" onclick="pedBorrarLinea('${d.id_linea}')">✕</span></td>
     </tr>`;
     if(abierta){
       const ents=d.entregas;
       h+=`<tr class="ped-sub"><td></td><td colspan="12">`;
       if(!ents.length)h+='<span style="color:var(--muted2)">Sin entradas registradas todavía.</span>';
       else h+='<table class="ped-ent"><thead><tr><th>Fecha</th><th class="td-num">Cantidad</th><th>Origen</th><th>Ref.</th><th></th></tr></thead><tbody>'
-        +ents.map(e=>`<tr><td>${pedFechaCorta(e.fecha)}</td><td class="td-num">${fmtN(e.cantidad)}</td><td>${pedEsc(e.origen)}</td><td>${pedEsc(e.ref)||'·'}</td><td><span class="ped-del" title="Borrar esta entrada" onclick="pedBorrarEntrega('${e.id_entrega}')">✕</span></td></tr>`).join('')
+        +ents.map(e=>pedEditEnt===e.id_entrega
+          ? `<tr><td><input type="date" class="art-inp" style="width:130px;text-align:left" id="pee-fecha" value="${pedEsc(e.fecha)}"></td>`
+            +`<td class="td-num"><input type="number" min="1" step="1" class="art-inp" style="width:70px" id="pee-cant" value="${e.cantidad}"></td>`
+            +`<td>${pedEsc(e.origen)}</td><td>${pedEsc(e.ref)||'·'}</td>`
+            +`<td style="white-space:nowrap"><span class="ped-ok" title="Guardar" onclick="pedGuardarEntrega('${e.id_entrega}')">✓</span><span class="ped-del" title="Cancelar" onclick="pedCancelarEdicionEntrega()">✕</span></td></tr>`
+          : `<tr><td>${pedFechaCorta(e.fecha)}</td><td class="td-num">${fmtN(e.cantidad)}</td><td>${pedEsc(e.origen)}</td><td>${pedEsc(e.ref)||'·'}</td><td style="white-space:nowrap"><span class="ped-edit" title="Corregir esta entrada" onclick="pedEditarEntrega('${e.id_entrega}')">✎</span><span class="ped-del" title="Borrar esta entrada" onclick="pedBorrarEntrega('${e.id_entrega}')">✕</span></td></tr>`).join('')
         +'</tbody></table>';
       h+='</td></tr>';
     }
@@ -2325,6 +2338,125 @@ function renderPedResumen(rows){
     +marcas.map(m=>fila(m,M[m])).join('')
     +fila('TOTAL',G,'tot-row')
     +'</tbody>';
+}
+
+// La fila en modo edición: cada campo del pedido pasa a ser un input.
+// Entregado / pendiente no se editan acá: salen de las entradas.
+function pedFilaEdicion(d){
+  const v=x=>pedEsc(x);
+  return `<tr class="ped-editando">
+    <td></td>
+    <td><input type="date" class="art-inp" style="width:128px;text-align:left" id="pedit-fecha" value="${v(d.fecha)}"></td>
+    <td><input type="text" class="art-inp" style="width:70px;text-align:left;text-transform:uppercase" id="pedit-marca" value="${v(d.marca)}" list="pedMarcaList"></td>
+    <td><input type="text" class="art-inp" style="width:90px;text-align:left;text-transform:uppercase" id="pedit-articulo" value="${v(d.articulo)}"></td>
+    <td><input type="text" class="art-inp" style="width:90px;text-align:left;text-transform:uppercase" id="pedit-artsis" value="${v(d.art_sistema)}"></td>
+    <td><input type="text" class="art-inp" style="width:70px;text-align:left;text-transform:uppercase" id="pedit-color" value="${v(d.color)}" list="pedColorList"></td>
+    <td class="td-num"><input type="number" min="1" step="1" class="art-inp" style="width:64px" id="pedit-cantidad" value="${d.cantidad}"></td>
+    <td class="td-num"><input type="number" min="0" step="0.01" class="art-inp" style="width:92px" id="pedit-costo" value="${d.costo}"></td>
+    <td class="td-num" style="color:var(--muted2)">—</td>
+    <td class="td-num" style="color:var(--muted2)">${fmtN(d.entregado)}</td>
+    <td class="td-num" style="color:var(--muted2)">—</td>
+    <td class="td-num" style="color:var(--muted2)">—</td>
+    <td style="white-space:nowrap"><span class="ped-ok" title="Guardar los cambios" onclick="pedGuardarEdicion()">✓</span><span class="ped-del" title="Cancelar" onclick="pedCancelarEdicion()">✕</span></td>
+  </tr>
+  <tr class="ped-editando"><td></td><td colspan="12" style="padding-top:0">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="range-label">Temporada</span>
+      <input type="text" class="art-inp" style="width:70px;text-align:left;text-transform:uppercase" id="pedit-temporada" value="${v(d.temporada)}" list="pedTempList">
+      <span class="range-label">Obs</span>
+      <input type="text" class="art-inp" style="width:220px;text-align:left" id="pedit-obs" value="${v(d.obs)}" placeholder="opcional">
+      <span id="pedit-msg" style="font-size:10px;font-family:var(--font-mono);color:var(--muted2)"></span>
+    </div>
+  </td></tr>`;
+}
+
+function pedEditar(id){
+  if(!pedOk)return;
+  pedEdit=id;pedEditEnt=null;
+  if(pedAbierta&&pedAbierta!==id)pedAbierta=null;
+  renderPed();
+  const f=document.getElementById('pedit-cantidad');if(f)f.focus();
+}
+function pedCancelarEdicion(){pedEdit=null;renderPed();}
+
+async function pedGuardarEdicion(){
+  if(!pedOk||!pedEdit)return;
+  const id=pedEdit;
+  const orig=pedLineas.find(l=>String(l.id_linea)===id);
+  const calc=pedDatos.find(d=>d.id_linea===id);
+  if(!orig||!calc){pedCancelarEdicion();return;}
+  const g=x=>document.getElementById('pedit-'+x);
+  const nueva={
+    id_linea:id,
+    temporada:pedUp(g('temporada').value),
+    fecha:g('fecha').value,
+    marca:pedUp(g('marca').value),
+    articulo:pedUp(g('articulo').value),
+    art_sistema:pedUp(g('artsis').value),
+    color:pedUp(g('color').value),
+    cantidad:Math.round(pedNum(g('cantidad').value)),
+    costo:pedNum(g('costo').value),
+    obs:g('obs').value.trim()
+  };
+  const msg=(t,ok)=>{const e=document.getElementById('pedit-msg');if(e){e.textContent=t;e.style.color=ok===false?'var(--red)':'var(--muted2)';}};
+  if(!nueva.temporada){msg('Falta la temporada',false);return;}
+  if(!nueva.fecha){msg('Falta la fecha',false);return;}
+  if(!nueva.marca){msg('Falta la marca',false);return;}
+  if(!nueva.articulo){msg('Falta el artículo',false);return;}
+  if(!nueva.color){msg('Falta el color',false);return;}
+  if(!(nueva.cantidad>0)){msg('La cantidad tiene que ser mayor a 0',false);return;}
+  if(!(nueva.costo>0)){msg('Falta el costo unitario',false);return;}
+  const choca=pedLineas.some(l=>String(l.id_linea)!==id&&pedUp(l.temporada)===nueva.temporada&&pedUp(l.marca)===nueva.marca
+    &&pedUp(l.articulo)===nueva.articulo&&pedUp(l.color)===nueva.color&&String(l.fecha||'')===nueva.fecha);
+  if(choca){msg('Ya existe otra línea igual con esa fecha',false);return;}
+
+  msg('Guardando…');
+  const antes={...orig};
+  try{
+    await pedPost(WEBHOOK_PED_GUARDAR,{lineas:[nueva]});
+    Object.assign(orig,nueva);
+    pedEdit=null;
+    renderPed();
+    const aviso=(calc.entregado>nueva.cantidad)
+      ? ' · ojo: ya habías recibido '+fmtN(calc.entregado)+', queda entregada de más'
+      : '';
+    pedMsg('pedSaveMsg','✓ '+nueva.articulo+' '+nueva.color+' corregida'+aviso,!aviso);
+  }catch(e){
+    Object.assign(orig,antes);
+    msg('Error al guardar: '+e.message,false);
+  }
+}
+
+function pedEditarEntrega(id){
+  if(!pedOk)return;
+  pedEditEnt=id;pedEdit=null;
+  renderPed();
+}
+function pedCancelarEdicionEntrega(){pedEditEnt=null;renderPed();}
+
+async function pedGuardarEntrega(id){
+  if(!pedOk)return;
+  const orig=pedEntregas.find(e=>String(e.id_entrega)===id);
+  if(!orig){pedCancelarEdicionEntrega();return;}
+  const fecha=document.getElementById('pee-fecha').value;
+  const cantidad=Math.round(pedNum(document.getElementById('pee-cant').value));
+  if(!fecha){pedMsg('pedSaveMsg','Falta la fecha de la entrada',false);return;}
+  if(!(cantidad>0)){pedMsg('pedSaveMsg','La cantidad de la entrada tiene que ser mayor a 0',false);return;}
+  const antes={...orig};
+  pedMsg('pedSaveMsg','Guardando…');
+  try{
+    await pedPost(WEBHOOK_ENT_GUARDAR,{entregas:[{
+      id_entrega:orig.id_entrega,id_linea:orig.id_linea,fecha:fecha,cantidad:cantidad,
+      origen:orig.origen||'manual',ref:orig.ref||'',obs:orig.obs||''
+    }]});
+    orig.fecha=fecha;orig.cantidad=cantidad;
+    pedEditEnt=null;
+    renderPed();
+    pedMsg('pedSaveMsg','✓ entrada corregida',true);
+  }catch(e){
+    Object.assign(orig,antes);
+    pedMsg('pedSaveMsg','Error al guardar: '+e.message,false);
+  }
 }
 
 function pedToggleEntregas(id){pedAbierta=(pedAbierta===id)?null:id;renderPed();}
