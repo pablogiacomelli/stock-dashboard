@@ -887,6 +887,7 @@ function buildPPC(){
     const d=parseDate(c['Fecha compra']);if(!d)return;
     const qty=parseNum(c['Cantidad']);if(qty<=0)return;
     const amt=parseNum(c['Subtotal ($)']||c['Importe ($)']||c['Precio neto ($)']||0);
+    if(amt<=0)return; // compra cargada sin precio: no es costo real, cae al PPC del artículo
     const e={date:d,qty,amt};add(bySku,sku,e);const info=parseArticulo(sku);if(info)add(byArt,info.articulo,e);
   });
   function pick(arr){
