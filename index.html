@@ -236,6 +236,7 @@ footer{padding:20px 40px;border-top:1px solid var(--border);font-size:10px;color
   <button class="tab-btn" id="tabResumen" onclick="setView('resumen')">🗓 Resumen por Temporada</button>
   <button class="tab-btn" id="tabArt" onclick="setView('art')">🎯 Análisis de Artículos</button>
   <button class="tab-btn" id="tabPed" onclick="setView('ped')">📋 Pedidos</button>
+  <button class="tab-btn" id="tabIns" onclick="setView('ins')">🧾 Insumos</button>
 </div>
 
 <main id="viewPanel">
@@ -489,6 +490,17 @@ footer{padding:20px 40px;border-top:1px solid var(--border);font-size:10px;color
 
 </main>
 
+<main id="viewIns" style="display:none">
+  <div class="chart-card chart-full">
+    <div class="chart-header"><div>
+      <div class="chart-title">Stock de insumos</div>
+      <div class="chart-subtitle" id="insSub">Bolsas y etiquetas · stock en vivo de EcommApp · mínimos de la alerta diaria de las 09:00</div>
+    </div>
+    <button class="btn-load" id="btnInsRefrescar" onclick="insCargar()">⟳ Actualizar</button></div>
+    <div id="insTabla"></div>
+  </div>
+</main>
+
 <main id="viewPed" style="display:none">
 
   <div id="pedAviso" style="display:none;margin:0 0 16px;border-left:2px solid var(--accent);background:rgba(212,168,83,.06);padding:10px 14px;font-size:11px;font-family:var(--font-mono);color:var(--muted)"></div>
@@ -678,7 +690,27 @@ const API_KEY='mahra-stk-9F3K2P7Q-2026';
 // Stock en vivo: lo lee el VPS directo de EcommApp en el momento (deposito General).
 // Si falla, el panel usa el stock de la hoja "Stock Completo" (se reescribe todos los dias 07:15).
 const WEBHOOK_STOCK_VIVO='https://n8n.mahra-ai.online/webhook/stock-vivo';
-let stockFuente='hoja',stockHora=null;
+let stockFuente='hoja',stockHora=null,rawInsumos=null;
+// ===== INSUMOS (bolsas, etiquetas): solo en esta pestaña, nunca en el stock de articulos =====
+function insEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+async function insCargar(){
+  const btn=document.getElementById('btnInsRefrescar');if(btn){btn.disabled=true;btn.textContent='⟳ Leyendo…';}
+  try{const v=await fetchStockVivo();rawInsumos=v.insumos||[];rawStock=v.stock;stockFuente='vivo';stockHora=new Date();marcarFuenteStock();buildArticulosData();renderAll();insRender();}
+  catch(e){document.getElementById('insTabla').innerHTML='<div class="am-empty">No se pudo leer el stock en vivo: '+insEsc(e.message)+'</div>';}
+  finally{if(btn){btn.disabled=false;btn.textContent='⟳ Actualizar';}}
+}
+function insRender(){
+  const cont=document.getElementById('insTabla');if(!cont)return;
+  if(!rawInsumos){cont.innerHTML='<div class="am-empty">Cargando…</div>';insCargar();return;}
+  const filas=rawInsumos.slice().sort((a,b)=>(b.stk_local>0)-(a.stk_local>0)||a.sku.localeCompare(b.sku));
+  const est=i=>i.falta?['No existe en EcommApp','#e07060']:(i.minimo==null?['Sin mínimo','#9a9690']:(i.stk_local<i.minimo?['Debajo del mínimo','#e07060']:['OK','#8fbe9e']));
+  let h='<table class="am-table"><thead><tr><th>SKU</th><th>Descripción</th><th class="td-num">Stock</th><th class="td-num">Mínimo</th><th class="td-num">Costo unit.</th><th>Estado</th></tr></thead><tbody>';
+  filas.forEach(i=>{const e=est(i);h+='<tr><td>'+insEsc(i.sku)+'</td><td>'+insEsc(i.descripcion)+'</td><td class="td-num" style="font-weight:600">'+Math.round(i.stk_local).toLocaleString('es-AR')+'</td><td class="td-num">'+(i.minimo==null?'—':i.minimo.toLocaleString('es-AR'))+'</td><td class="td-num">'+(i.costo?('$'+Math.round(i.costo).toLocaleString('es-AR')):'—')+'</td><td><span style="color:'+e[1]+'">● '+e[0]+'</span></td></tr>';});
+  h+='</tbody></table>';
+  cont.innerHTML=h;
+  const conStock=filas.filter(i=>i.stk_local>0).length,bajos=filas.filter(i=>!i.falta&&i.minimo!=null&&i.stk_local<i.minimo).length;
+  document.getElementById('insSub').textContent='Bolsas y etiquetas · '+conStock+' con stock · '+bajos+' debajo del mínimo · en vivo de EcommApp'+(stockHora?' · '+stockHora.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}):'');
+}
 async function fetchStockVivo(){
   const resp=await fetch(WEBHOOK_STOCK_VIVO,{method:'POST',headers:{'Content-Type':'application/json','x-mahra-key':API_KEY},body:'{}'});
   const txt=await resp.text();
@@ -696,7 +728,7 @@ async function refrescarStock(){
   const btn=document.getElementById('btnStockVivo');if(btn){btn.disabled=true;btn.textContent='⟳ Leyendo…';}
   try{
     const v=await fetchStockVivo();
-    rawStock=v.stock;stockFuente='vivo';stockHora=new Date();
+    rawStock=v.stock;rawInsumos=v.insumos||[];stockFuente='vivo';stockHora=new Date();
     buildArticulosData();renderAll();marcarFuenteStock();
   }catch(e){showError('No se pudo leer el stock en vivo: '+e.message);}
   finally{if(btn){btn.disabled=false;btn.textContent='⟳ Stock en vivo';}}
@@ -889,7 +921,7 @@ async function loadAllData(){
   try{
     setLoading('Leyendo Sheets server-side...');
     const [data,vivo]=await Promise.all([fetchStockData(),fetchStockVivo().catch(()=>null)]);
-    if(vivo){data.stock=vivo.stock;stockFuente='vivo';stockHora=new Date();}else{stockFuente='hoja';}
+    if(vivo){data.stock=vivo.stock;rawInsumos=vivo.insumos||[];stockFuente='vivo';stockHora=new Date();}else{stockFuente='hoja';}
     rawStock=data.stock;rawCompras=data.compras;rawVentas=data.ventas;rawBI=data.bi;rawCostos=data.costos||[];
     setLoading('Procesando costos PPC...');populateSelects();buildArticulosData();renderAll();
     document.getElementById('lastUpdate').textContent='⚡ En vivo · '+new Date().toLocaleString('es-AR');
@@ -1327,8 +1359,8 @@ function setLoading(t){document.getElementById('loadingText').textContent=t;}
 function hideLoading(){document.getElementById('loadingOverlay').classList.remove('visible');}
 // ====== PESTAÑAS + TABLAS CRUZADAS EN PANTALLA ======
 function setView(v){
-  const VISTAS={panel:'viewPanel',resumen:'viewResumen',art:'viewArt',ped:'viewPed'};
-  const TABS={panel:'tabPanel',resumen:'tabResumen',art:'tabArt',ped:'tabPed'};
+  const VISTAS={panel:'viewPanel',resumen:'viewResumen',art:'viewArt',ped:'viewPed',ins:'viewIns'};
+  const TABS={panel:'tabPanel',resumen:'tabResumen',art:'tabArt',ped:'tabPed',ins:'tabIns'};
   for(const k in VISTAS){
     const el=document.getElementById(VISTAS[k]);if(el)el.style.display=(k===v)?'':'none';
     const t=document.getElementById(TABS[k]);if(t)t.classList.toggle('active',k===v);
@@ -1336,6 +1368,7 @@ function setView(v){
   if(v==='resumen')renderPivots();
   if(v==='art')artAbrir();
   if(v==='ped')pedCargar(false);
+  if(v==='ins')insRender();
 }
 async function artAbrir(){
   if(!artUmbralesOk)await artCargarUmbrales();
