@@ -224,9 +224,11 @@ footer{padding:20px 40px;border-top:1px solid var(--border);font-size:10px;color
     </div>
   </div>
   <button class="btn-load" onclick="loadAllData()">↻ Cargar</button>
+  <button class="btn-load" id="btnStockVivo" style="margin-left:8px" onclick="refrescarStock()" title="Vuelve a leer solo el stock, directo de EcommApp (tarda unos segundos)">⟳ Stock en vivo</button>
   <button class="btn-load" style="margin-left:8px" onclick="descargarExcel()" title="Descarga el stock valorizado a costo PPC, una fila por SKU, respetando los filtros activos">⬇ Excel</button>
 </div>
 
+<div id="stockFuente" style="padding:6px 40px 0;font-family:var(--font-mono);font-size:11px;letter-spacing:.04em"></div>
 <div class="error-msg" id="errorMsg"></div>
 
 <div class="tabs-bar">
@@ -673,6 +675,32 @@ footer{padding:20px 40px;border-top:1px solid var(--border);font-size:10px;color
 const WEBHOOK_DATA='https://n8n.mahra-ai.online/webhook/stock-data';
 const WEBHOOK_AI='https://n8n.mahra-ai.online/webhook/stock-ai-analysis';
 const API_KEY='mahra-stk-9F3K2P7Q-2026';
+// Stock en vivo: lo lee el VPS directo de EcommApp en el momento (deposito General).
+// Si falla, el panel usa el stock de la hoja "Stock Completo" (se reescribe todos los dias 07:15).
+const WEBHOOK_STOCK_VIVO='https://n8n.mahra-ai.online/webhook/stock-vivo';
+let stockFuente='hoja',stockHora=null;
+async function fetchStockVivo(){
+  const resp=await fetch(WEBHOOK_STOCK_VIVO,{method:'POST',headers:{'Content-Type':'application/json','x-mahra-key':API_KEY},body:'{}'});
+  const txt=await resp.text();
+  if(!resp.ok)throw new Error('Stock en vivo HTTP '+resp.status);
+  const data=JSON.parse(txt);
+  if(!data||!Array.isArray(data.stock)||!data.stock.length)throw new Error('Stock en vivo vacio');
+  return data;
+}
+function marcarFuenteStock(){
+  const el=document.getElementById('stockFuente');if(!el)return;
+  if(stockFuente==='vivo'){el.textContent='🟢 Stock en vivo de EcommApp · '+stockHora.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});el.style.color='#8fbe9e';}
+  else{el.textContent='🟡 Stock del día (hoja de las 07:15): no se pudo leer en vivo';el.style.color='#d4a853';}
+}
+async function refrescarStock(){
+  const btn=document.getElementById('btnStockVivo');if(btn){btn.disabled=true;btn.textContent='⟳ Leyendo…';}
+  try{
+    const v=await fetchStockVivo();
+    rawStock=v.stock;stockFuente='vivo';stockHora=new Date();
+    buildArticulosData();renderAll();marcarFuenteStock();
+  }catch(e){showError('No se pudo leer el stock en vivo: '+e.message);}
+  finally{if(btn){btn.disabled=false;btn.textContent='⟳ Stock en vivo';}}
+}
 
 let rawStock=[],rawCompras=[],rawVentas=[],rawBI=[],rawCostos=[];
 let articulosData={};
@@ -860,13 +888,15 @@ async function loadAllData(){
   showLoading('Conectando con n8n...');hideError();
   try{
     setLoading('Leyendo Sheets server-side...');
-    const data=await fetchStockData();
+    const [data,vivo]=await Promise.all([fetchStockData(),fetchStockVivo().catch(()=>null)]);
+    if(vivo){data.stock=vivo.stock;stockFuente='vivo';stockHora=new Date();}else{stockFuente='hoja';}
     rawStock=data.stock;rawCompras=data.compras;rawVentas=data.ventas;rawBI=data.bi;rawCostos=data.costos||[];
     setLoading('Procesando costos PPC...');populateSelects();buildArticulosData();renderAll();
     document.getElementById('lastUpdate').textContent='⚡ En vivo · '+new Date().toLocaleString('es-AR');
     const cb=document.getElementById('cacheBanner');if(cb)cb.remove();
     saveCache();
     setStatus('En vivo · '+rawStock.length+' SKU / '+rawVentas.length+' ventas / '+rawBI.length+' BI',true);
+    marcarFuenteStock();
   }catch(e){
     showError('Error: '+e.message);
     setStatus('Error al cargar',false);
