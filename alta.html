@@ -67,6 +67,7 @@ table.grilla .x{background:transparent;color:var(--mut);padding:2px 6px;font-siz
 .talles label{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--bd);border-radius:20px;padding:6px 12px;margin:0;font-size:14px;color:var(--tx);cursor:pointer;user-select:none}
 .talles label.on{background:var(--sel);border-color:var(--pri);color:var(--pri);font-weight:700}
 .talles input{width:auto;margin:0}
+.instr h1{font-size:20px;margin:0 0 10px}.instr h2{font-size:17px;margin:22px 0 6px;color:var(--pri)}.instr h3{font-size:14px;margin:16px 0 4px}.instr p,.instr li{line-height:1.5}.instr table{margin:8px 0 14px}.instr td,.instr th{position:static;font-size:13px}.instr code{background:#f1f3f4;padding:1px 5px;border-radius:4px;font-family:Consolas,monospace;font-size:12.5px}
 kbd{font:inherit;font-size:11px;background:#eee;border:1px solid #ccc;border-radius:4px;padding:0 4px}
 @media (max-width:700px){main,nav,header{padding-left:12px;padding-right:12px}.grid .w2{grid-column:span 1}}
 </style>
@@ -103,6 +104,8 @@ kbd{font:inherit;font-size:11px;background:#eee;border:1px solid #ccc;border-rad
   <button data-t="marcas">Marcas (SKU)</button>
   <button data-t="colores">Colores</button>
   <button data-t="rubros">Rubros</button>
+  <button data-t="sug">Sugerencias</button>
+  <button data-t="instr">Instructivo</button>
 </nav>
 <main>
 <div id="estado" class="msg hide"></div>
@@ -143,6 +146,7 @@ kbd{font:inherit;font-size:11px;background:#eee;border:1px solid #ccc;border-rad
     </div>
     <datalist id="dlTemp"></datalist>
     <div class="barra">
+      <label style="margin:0">Responsable</label><select id="gResp" style="width:auto;min-width:150px"></select>
       <button class="okb" id="btnGuardarTodo">Agregar todo a pendientes</button>
       <button class="sec" id="btnFilas">+ 5 filas</button>
       <button class="sec" id="btnVaciar">Vaciar planilla</button>
@@ -154,7 +158,7 @@ kbd{font:inherit;font-size:11px;background:#eee;border:1px solid #ccc;border-rad
   <div class="card">
     <h2>Pendientes de dar de alta</h2>
     <p class="sub">Lo que se carga en EcommApp al apretar <b>Procesar artículos</b>. Después aparece la pantalla de la compra: cargala ahí mismo, porque recién con la compra las variantes quedan con proveedor, marca y categoría.</p>
-    <div class="scroll"><table><thead><tr><th>SKU</th><th>Descripción etiqueta</th><th>Título</th><th>Categoría</th><th>Marca (SKU)</th><th class="der">Costo</th><th class="der">Precio</th><th>Cargó</th><th></th></tr></thead><tbody id="tbPend"></tbody></table></div>
+    <div class="scroll"><table><thead><tr><th>SKU</th><th>Descripción etiqueta</th><th>Título</th><th>Categoría</th><th>Marca (SKU)</th><th class="der">Costo</th><th class="der">Precio</th><th>Responsable</th><th></th></tr></thead><tbody id="tbPend"></tbody></table></div>
     <div class="barra">
       <button class="okb" id="btnProcesar">▶ Procesar artículos</button>
       <button class="sec" id="btnVista">Vista previa (no carga nada)</button>
@@ -222,6 +226,19 @@ kbd{font:inherit;font-size:11px;background:#eee;border:1px solid #ccc;border-rad
   <div id="resRubro"></div>
   <div class="scroll" style="margin-top:12px"><table><thead><tr><th>Rubro</th><th>Código SKU</th><th class="der">Artículos</th></tr></thead><tbody id="tbRubros"></tbody></table></div>
 </div></section>
+<!-- ===== SUGERENCIAS ===== -->
+<section id="v-sug" class="hide"><div class="card">
+  <h2>Sugerencias</h2><p class="sub">Pedidos de mejora del panel o del circuito de alta y compras. Se revisan de lunes a viernes a la mañana y Pablo decide qué se hace.</p>
+  <div class="grid"><div><label>Responsable</label><select id="sgResp"></select></div><div class="w2" style="grid-column:span 3"><label>Sugerencia</label><textarea id="sgTexto" rows="3" placeholder="Qué cambiarías y por qué"></textarea></div><div style="align-self:end"><button class="pri" id="btnSug">Enviar sugerencia</button></div></div>
+  <div id="resSug"></div>
+  <div class="scroll" style="margin-top:12px"><table><thead><tr><th>Fecha</th><th>Responsable</th><th>Sugerencia</th><th>Estado</th><th>Respuesta</th></tr></thead><tbody id="tbSug"></tbody></table></div>
+</div></section>
+
+<!-- ===== INSTRUCTIVO ===== -->
+<section id="v-instr" class="hide"><div class="card">
+  <div class="barra" style="margin:0 0 10px"><h2 style="margin:0">Instructivo del panel</h2><span class="tag t-c" id="instrFecha">Última modificación: …</span><div class="sp" style="flex:1"></div><a class="pri" id="btnInstrPdf" href="instructivo.pdf" download="Manual-Panel-Alta-Compras.pdf" style="text-decoration:none;display:inline-block">Descargar PDF</a></div>
+  <div id="instrCuerpo" class="instr sub" style="font-size:14px;color:var(--tx)">Cargando…</div>
+</div></section>
 </main>
 </div>
 
@@ -231,7 +248,8 @@ kbd{font:inherit;font-size:11px;background:#eee;border:1px solid #ccc;border-rad
 var API = 'https://n8n.mahra-ai.online/webhook/alta-panel-api';
 var LOGIN = 'https://n8n.mahra-ai.online/webhook/panel-acceso';
 var ALTA = 'https://n8n.mahra-ai.online/webhook/alta-articulos-ecommapp';
-var TABS = ['alta','hist','cats','mcom','marcas','colores','rubros'];
+var TABS = ['alta','hist','cats','mcom','marcas','colores','rubros','sug','instr'];
+var RESPONSABLES = ['Vanina','Ana Paula','Emilia','Yamila','Ludmila','Pablo'];
 var COLS = ['cod','temp','color','talles','marca','rubro','cat','costo','precio','titulo','obs'];
 var HEREDA = { temp:1, marca:1, rubro:1, cat:1 };
 var sesion = null, D = null;
@@ -287,7 +305,7 @@ function cargar(){
   estado('Cargando artículos…');
   return api({ accion:'leer' }).then(function(j){
     if (!j.ok) throw new Error(j.error || 'No se pudo leer');
-    D = j; D.categorias = D.categorias || []; D.marcas_comerciales = D.marcas_comerciales || []; D.proveedor_marca = D.proveedor_marca || [];
+    D = j; D.categorias = D.categorias || []; D.marcas_comerciales = D.marcas_comerciales || []; D.proveedor_marca = D.proveedor_marca || []; D.sugerencias = D.sugerencias || [];
     estado('');
     $('app').classList.remove('hide');
     $('usuario').textContent = j.usuario || '';
@@ -315,7 +333,10 @@ function opts(tipo){
   if (tipo === 'rubro') return '<option value=""></option>' + D.rubros.map(function(r){ return '<option value="'+esc(r.nombre)+'">'+esc(r.nombre)+'</option>'; }).join('');
   return '<option value=""></option>' + D.categorias.map(function(c){ return '<option value="'+esc(c.nombre)+'">'+esc(c.nombre)+'</option>'; }).join('');
 }
+function opcionesResp(sel){ return '<option value="">Elegí…</option>' + RESPONSABLES.map(function(r){ return '<option value="' + esc(r) + '"' + (r === sel ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join(''); }
+function respGuardada(){ try { return localStorage.getItem('mahra_alta_responsable') || ''; } catch(e){ return ''; } }
 function llenarSelects(){
+  if (!$('gResp').options.length){ $('gResp').innerHTML = opcionesResp(respGuardada()); $('sgResp').innerHTML = opcionesResp(respGuardada()); }
   $('pmMarca').innerHTML = opcionesMarcaCom('');
   llenarRapida();
   var temps = {}; D.articulos.forEach(function(a){ if (a.temporada) temps[U(a.temporada)] = 1; });
@@ -511,13 +532,16 @@ $('btnVaciar').addEventListener('click', function(){ if (!confirm('¿Vaciar toda
 $('btnGuardarTodo').addEventListener('click', function(){
   var res = validarGrilla().filter(function(x){ return !x.vacia; });
   if (!res.length){ $('resGuardar').innerHTML = '<div class="msg err">La planilla está vacía.</div>'; return; }
+  var responsable = $('gResp').value;
+  if (!responsable){ $('resGuardar').innerHTML = '<div class="msg err">Elegí la responsable (quién está cargando) antes de agregar a pendientes.</div>'; $('gResp').focus(); return; }
+  try { localStorage.setItem('mahra_alta_responsable', responsable); } catch(e){}
   var listas = res.filter(function(x){ return !x.a.errores.length; }), conError = res.length - listas.length;
   if (!listas.length){ $('resGuardar').innerHTML = '<div class="msg err">Ninguna fila está completa: corregí lo marcado en rojo.</div>'; return; }
   if (conError && !confirm(listas.length + ' fila(s) están listas y ' + conError + ' tienen errores. ¿Agrego las que están bien y dejo las otras en la planilla para corregir?')) return;
   var filas = [], borrar = [];
   listas.forEach(function(x){
     var a = x.a; if (a.id) borrar.push(a.id);
-    a.filas.forEach(function(f){ filas.push({ codigo_proveedor: a.cp, temporada: a.temp, color: a.color, talle: f.talle, marca: a.marca, rubro: a.rubro, categoria: a.categoria, costo: a.costo, precio: a.precio, titulo: a.titulo, observaciones: a.obs }); });
+    a.filas.forEach(function(f){ filas.push({ codigo_proveedor: a.cp, temporada: a.temp, color: a.color, talle: f.talle, marca: a.marca, rubro: a.rubro, categoria: a.categoria, costo: a.costo, precio: a.precio, titulo: a.titulo, observaciones: a.obs, responsable: responsable }); });
   });
   var b = $('btnGuardarTodo'); b.disabled = true; b.textContent = 'Guardando…';
   var paso = borrar.length ? api({ accion:'borrar', ids: borrar }) : Promise.resolve({ ok:true });
@@ -543,12 +567,12 @@ $('btnGuardarTodo').addEventListener('click', function(){
 });
 
 // ---- tablas ----
-function pintarTodo(){ pintarPend(); pintarHist(); pintarCatalogos(); validarGrilla(); }
+function pintarTodo(){ pintarPend(); pintarHist(); pintarCatalogos(); pintarSugerencias(); validarGrilla(); }
 function pintarPend(){
   var p = D.articulos.filter(function(a){ return a.estado !== 'CARGADO'; }).sort(function(a,b){ return String(a.sku).localeCompare(String(b.sku)); });
   $('tbPend').innerHTML = p.length ? p.map(function(a){
     var cat = a.categoria ? esc(a.categoria) : '<span class="tag t-p">sin categoría</span>';
-    return '<tr><td class="mono">' + esc(a.sku) + '</td><td class="mono">' + esc(a.descripcion_etiqueta) + '</td><td>' + esc(a.titulo) + '</td><td>' + cat + '</td><td>' + esc(a.marca) + '</td><td class="der">' + money(a.costo) + '</td><td class="der">' + money(a.precio) + '</td><td>' + esc(a.usuario || '') + '</td><td style="white-space:nowrap"><button class="sec" data-ed="' + a.id + '">Editar</button> <button class="dan" data-bo="' + a.id + '">Borrar</button></td></tr>';
+    return '<tr><td class="mono">' + esc(a.sku) + '</td><td class="mono">' + esc(a.descripcion_etiqueta) + '</td><td>' + esc(a.titulo) + '</td><td>' + cat + '</td><td>' + esc(a.marca) + '</td><td class="der">' + money(a.costo) + '</td><td class="der">' + money(a.precio) + '</td><td>' + esc(a.responsable || a.usuario || '') + '</td><td style="white-space:nowrap"><button class="sec" data-ed="' + a.id + '">Editar</button> <button class="dan" data-bo="' + a.id + '">Borrar</button></td></tr>';
   }).join('') : '<tr><td colspan="9" class="sub" style="padding:14px">No hay artículos pendientes.</td></tr>';
   var sinCat = p.filter(function(a){ return !a.categoria; }).length;
   $('pendInfo').textContent = p.length + ' variante(s) pendiente(s)' + (sinCat ? ' · ' + sinCat + ' sin categoría (editalas antes de procesar)' : '');
@@ -655,6 +679,69 @@ $('btnProvMarca').addEventListener('click', function(){
   if (!p){ $('resProvMarcaAlta').innerHTML = '<div class="msg err">Elegí el proveedor de la lista (escribí parte del nombre y esperá las opciones).</div>'; return; }
   agregarCatalogo('proveedor_marca', { proveedor_id: p.id, proveedor: p.nombre, marca: $('pmMarca').value }, 'resProvMarcaAlta', ['pmProv']);
 });
+
+// ---- sugerencias ----
+function pintarSugerencias(){
+  var l = D.sugerencias || [];
+  $('tbSug').innerHTML = l.length ? l.map(function(s){
+    var f = s.fecha ? new Date(s.fecha) : null, ft = f && !isNaN(f) ? f.toLocaleDateString('es-AR') : '';
+    return '<tr><td>' + esc(ft) + '</td><td>' + esc(s.responsable) + '</td><td>' + esc(s.sugerencia) + '</td><td><span class="tag ' + (s.estado === 'NUEVA' ? 't-p' : 't-c') + '">' + esc(s.estado) + '</span></td><td>' + esc(s.respuesta || '') + '</td></tr>';
+  }).join('') : '<tr><td colspan="5" class="sub" style="padding:14px">Todavía no hay sugerencias.</td></tr>';
+}
+$('btnSug').addEventListener('click', function(){
+  var r = $('sgResp').value, t = $('sgTexto').value.trim();
+  if (!r){ $('resSug').innerHTML = '<div class="msg err">Elegí la responsable.</div>'; return; }
+  if (t.length < 5){ $('resSug').innerHTML = '<div class="msg err">Escribí la sugerencia.</div>'; return; }
+  try { localStorage.setItem('mahra_alta_responsable', r); } catch(e){}
+  $('resSug').innerHTML = '<div class="msg av">Enviando…</div>';
+  api({ accion:'sugerencia', responsable: r, sugerencia: t }).then(function(j){
+    if (j.agregadas){ $('resSug').innerHTML = '<div class="msg ok">Gracias, quedó registrada. Se revisa en la próxima ronda.</div>'; $('sgTexto').value = ''; }
+    else $('resSug').innerHTML = '<div class="msg err">' + (j.rechazadas || []).map(function(x){ return esc(x.motivo); }).join('<br>') + '</div>';
+    return cargar();
+  }).catch(function(e){ if (e.message !== 'sin sesión') $('resSug').innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; });
+});
+
+// ---- instructivo (instructivo.md del mismo repo; el PDF lo genera Claude con cada cambio) ----
+function mdInline(t){
+  t = esc(t);
+  t = t.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`(.+?)`/g, '<code>$1</code>');
+  t = t.replace(/(https?:\/\/[^\s<)]+)/g, '<a href="$1" target="_blank">$1</a>');
+  return t;
+}
+function mdRender(md){
+  var lines = md.replace(/\r/g, '').split('\n'), out = [], i = 0, fecha = '';
+  if (lines[0] === '---'){ var j = lines.indexOf('---', 1); lines.slice(1, j).forEach(function(l){ if (l.indexOf('actualizado:') === 0) fecha = l.split(':')[1].trim(); }); lines = lines.slice(j + 1); }
+  while (i < lines.length){
+    var l = lines[i];
+    if (!l.trim()){ i++; continue; }
+    if (l.indexOf('### ') === 0){ out.push('<h3>' + mdInline(l.slice(4)) + '</h3>'); i++; continue; }
+    if (l.indexOf('## ') === 0){ out.push('<h2>' + mdInline(l.slice(3)) + '</h2>'); i++; continue; }
+    if (l.indexOf('# ') === 0){ out.push('<h1>' + mdInline(l.slice(2)) + '</h1>'); i++; continue; }
+    if (l.charAt(0) === '|'){
+      var rows = [];
+      while (i < lines.length && lines[i].charAt(0) === '|'){ var cells = lines[i].replace(/^\||\|$/g, '').split('|').map(function(c){ return c.trim(); }); if (!cells.every(function(c){ return /^-+$/.test(c); })) rows.push(cells); i++; }
+      out.push('<table><thead><tr>' + rows[0].map(function(c){ return '<th>' + mdInline(c) + '</th>'; }).join('') + '</tr></thead><tbody>' + rows.slice(1).map(function(r){ return '<tr>' + r.map(function(c){ return '<td>' + mdInline(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table>');
+      continue;
+    }
+    if (/^\d+\. /.test(l)){ var items = []; while (i < lines.length && /^\d+\. /.test(lines[i])){ items.push(lines[i].replace(/^\d+\. /, '')); i++; } out.push('<ol>' + items.map(function(x){ return '<li>' + mdInline(x) + '</li>'; }).join('') + '</ol>'); continue; }
+    if (l.indexOf('- ') === 0){ var its = []; while (i < lines.length && lines[i].indexOf('- ') === 0){ its.push(lines[i].slice(2)); i++; } out.push('<ul>' + its.map(function(x){ return '<li>' + mdInline(x) + '</li>'; }).join('') + '</ul>'); continue; }
+    var buf = [l]; i++;
+    while (i < lines.length && lines[i].trim() && !/^(#|\||- |\d+\. )/.test(lines[i])){ buf.push(lines[i]); i++; }
+    out.push('<p>' + mdInline(buf.join(' ')) + '</p>');
+  }
+  return { html: out.join('\n'), fecha: fecha };
+}
+var instrCargado = false;
+function cargarInstructivo(){
+  if (instrCargado) return; instrCargado = true;
+  fetch('instructivo.md?v=' + Date.now()).then(function(r){ return r.text(); }).then(function(md){
+    var r = mdRender(md);
+    $('instrCuerpo').innerHTML = r.html;
+    if (r.fecha){ var p = r.fecha.split('-'); $('instrFecha').textContent = 'Última modificación: ' + p[2] + '/' + p[1] + '/' + p[0]; }
+    $('btnInstrPdf').href = 'instructivo.pdf?v=' + (r.fecha || Date.now());
+  }).catch(function(){ instrCargado = false; $('instrCuerpo').innerHTML = '<div class="msg err">No se pudo cargar el instructivo.</div>'; });
+}
+Array.prototype.forEach.call(document.querySelectorAll('#tabs button'), function(b){ b.addEventListener('click', function(){ if (b.dataset.t === 'instr') cargarInstructivo(); }); });
 
 sesion = leerSesion();
 if (sesion){ guardarSesion(sesion); cargar(); } else pedirIngreso();
