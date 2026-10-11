@@ -68,6 +68,7 @@ table.grilla .x{background:transparent;color:var(--mut);padding:2px 6px;font-siz
 .talles label.on{background:var(--sel);border-color:var(--pri);color:var(--pri);font-weight:700}
 .talles input{width:auto;margin:0}
 .instr h1{font-size:20px;margin:0 0 10px}.instr h2{font-size:17px;margin:22px 0 6px;color:var(--pri)}.instr h3{font-size:14px;margin:16px 0 4px}.instr p,.instr li{line-height:1.5}.instr table{margin:8px 0 14px}.instr td,.instr th{position:static;font-size:13px}.instr code{background:#f1f3f4;padding:1px 5px;border-radius:4px;font-family:Consolas,monospace;font-size:12.5px}
+a.pri{padding:8px 14px;border-radius:8px;font-weight:600;color:#fff;text-decoration:none}
 kbd{font:inherit;font-size:11px;background:#eee;border:1px solid #ccc;border-radius:4px;padding:0 4px}
 @media (max-width:700px){main,nav,header{padding-left:12px;padding-right:12px}.grid .w2{grid-column:span 1}}
 </style>
@@ -92,7 +93,7 @@ kbd{font:inherit;font-size:11px;background:#eee;border:1px solid #ccc;border-rad
 <header>
   <h1>MAHRA<small>Alta de artículos</small></h1>
   <div class="sp"></div>
-  <span class="us" id="usuario"></span>
+  <span class="us" id="usuario"></span><span class="tag t-p hide" id="demoTag">MODO DEMOSTRACIÓN: no guarda nada</span>
   <button id="btnRecargar">⟳ Recargar</button>
   <button id="btnSalir">Salir</button>
 </header>
@@ -253,6 +254,27 @@ var RESPONSABLES = ['Vanina','Ana Paula','Emilia','Yamila','Ludmila','Pablo'];
 var COLS = ['cod','temp','color','talles','marca','rubro','cat','costo','precio','titulo','obs'];
 var HEREDA = { temp:1, marca:1, rubro:1, cat:1 };
 var sesion = null, D = null;
+// ===== MODO DEMOSTRACION (?demo=1): datos de ejemplo, no toca el servidor =====
+var DEMO = /[?&]demo=1/.test(location.search);
+function datosDemo(){
+  var cats = ['ACCESORIOS','BALERINAS','BIRKEN','BORCEGOS','BOTAS DE LLUVIA','BOTAS Y TEXANAS','CARTERAS','SANDALIAS','SANDALIAS DE FIESTA','ZAPATILLAS','ZAPATOS','ZUECOS'].map(function(n, i){ return { id: i + 1, nombre: n, id_ecommapp: 643 + i }; });
+  var colores = [['NGR','NEGRO'],['CVIS','COMBINADO VISON'],['SLA','SUELA'],['PTA','PLATA'],['CHTE','CHOCOLATE'],['BRA','BRANDY'],['HNGR','HUESO NEGRO'],['AP','ANIMAL PRINT']].map(function(c, i){ return { id: i + 1, color_sistema: c[0], color_sku: c[0], detalle: c[1] }; });
+  var marcas = [['NEW FACTORY','NF'],['VALERIA LENGERIE','VL'],['SARA','SA'],['JUANITA SHOES','JS'],['PREGO','PR'],['LAPOPIE','LA']].map(function(m, i){ return { id: i + 1, nombre: m[0], codigo: m[1] }; });
+  var rubros = [['CALZADOS','CAL'],['CARTERAS','CAR'],['ACCESORIOS','ACC']].map(function(r, i){ return { id: i + 1, nombre: r[0], codigo: r[1] }; });
+  var arts = [];
+  function art(id, cp, temp, col, t, marca, rubro, cat, costo, precio, tit, estado, gtin){ arts.push({ id: id, codigo_proveedor: cp, temporada: temp, color: col, talle: t, marca: marca, rubro: rubro, categoria: cat, costo: costo, precio: precio, titulo: tit, observaciones: '', sku: [cp, temp, col, t, rubro === 'CALZADOS' ? 'CAL' : rubro === 'CARTERAS' ? 'CAR' : 'ACC', marcas.filter(function(m){ return m.nombre === marca; })[0].codigo].join('-'), gtin: gtin || '', codigo_etiqueta: gtin ? gtin.slice(0, 12) : '', descripcion_etiqueta: cp + '-' + temp + '  ' + col + ' ' + t, estado: estado, origen: estado === 'CARGADO' ? 'EXCEL' : 'PANEL', usuario: 'local', responsable: estado === 'CARGADO' ? '' : 'Vanina' }); }
+  ['36','37','38','39','40'].forEach(function(t, i){ art(100 + i, '7375', 'V27', 'NGR', t, 'NEW FACTORY', 'CALZADOS', 'SANDALIAS', 76000, 165000, 'Sandalia de Cuero | Jackie', 'CARGADO', '779000100001' + i); });
+  ['36','37','38','39','40'].forEach(function(t, i){ art(200 + i, '3580', 'V27', 'NGR', t, 'NEW FACTORY', 'CALZADOS', 'BOTAS Y TEXANAS', 91000, 199000, 'Texanas de Cuero | Dallas', 'CARGADO', '779000100002' + i); });
+  ['37','38','39','40'].forEach(function(t, i){ art(300 + i, '30', 'V27', 'CVIS', t, 'NEW FACTORY', 'CALZADOS', 'BALERINAS', 45000, 135000, 'Balerina de Cuero | Siena', 'PENDIENTE', ''); });
+  ['36','37','38'].forEach(function(t, i){ art(400 + i, 'JUSTA', 'V27', 'SLA', t, 'PREGO', 'CALZADOS', 'SANDALIAS', 60000, 130000, 'Sandalia de Cuero | Justa', 'CARGADO', '779000001234' + i); });
+  return {
+    ok: true, usuario: 'local (demo)', articulos: arts, marcas: marcas, colores: colores, rubros: rubros, categorias: cats,
+    marcas_comerciales: ['MAHRA','NEW FACTORY','VALERIA LENGERIE','SARA','JUANITA SHOES','PREGO','LAPOPIE'].map(function(n, i){ return { id: i + 1, nombre: n, id_ecommapp: 1630 + i }; }),
+    proveedor_marca: [[27116,'NF - TOFIARO S.A.','NEW FACTORY'],[25859,'VAMELI S.R.L.','VALERIA LENGERIE'],[26143,'SEBASTIAN UHART','SARA'],[26116,'JS - JUANILLA MARINA BELEN','JUANITA SHOES'],[26106,'JOSE IGNACIO RIOS FORNASARI','PREGO']].map(function(x, i){ return { id: i + 1, proveedor_id: x[0], proveedor: x[1], marca: x[2], marca_id: 1631 + i }; }),
+    sugerencias: [{ id: 1, fecha: '2026-10-11T19:00:00Z', responsable: 'Ana Paula', sugerencia: 'Que la planilla recuerde el ultimo proveedor usado.', estado: 'VISTA', respuesta: 'Se agrega la semana que viene.' }, { id: 2, fecha: '2026-10-11T21:30:00Z', responsable: 'Emilia', sugerencia: 'Poder cargar carteras con talle 00 desde la carga rapida.', estado: 'NUEVA', respuesta: '' }]
+  };
+}
+
 function $(id){ return document.getElementById(id); }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function U(s){ return String(s==null?'':s).replace(/\s+/g,' ').trim().toUpperCase(); }
@@ -293,6 +315,12 @@ $('formIngreso').addEventListener('submit', function(ev){
 $('btnSalir').addEventListener('click', function(){ pedirIngreso(); });
 
 function api(body){
+  if (DEMO) return new Promise(function(ok){ setTimeout(function(){
+    if (body.accion === 'leer') return ok(datosDemo());
+    if (body.accion === 'guardar') return ok({ ok: true, guardadas: (body.filas || []).map(function(f){ return [f.codigo_proveedor, f.temporada, f.color, f.talle, 'CAL', 'NF'].join('-'); }), rechazadas: [] });
+    if (body.accion === 'proveedores') return ok({ ok: true, proveedores: [{ id: 27116, nombre: 'NF - TOFIARO S.A.' }, { id: 25859, nombre: 'VAMELI S.R.L.' }] });
+    return ok({ ok: true, agregadas: 1, borradas: [], reabiertas: [], rechazadas: [] });
+  }, 150); });
   body.token = sesion ? sesion.token : '';
   return fetch(API, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(body) })
     .then(function(r){ return r.json(); })
@@ -309,6 +337,7 @@ function cargar(){
     estado('');
     $('app').classList.remove('hide');
     $('usuario').textContent = j.usuario || '';
+    if (DEMO) $('demoTag').classList.remove('hide');
     llenarSelects();
     if (primeraCarga){ primeraCarga = false; restaurarGrilla(); }
     else refrescarSelectsGrilla();
@@ -434,11 +463,11 @@ function validarGrilla(){
   return res;
 }
 function guardarGrillaLocal(){
-  try { localStorage.setItem('mahra_alta_grilla', JSON.stringify(Array.prototype.map.call(gBody.children, leerFila).filter(function(o){ return !filaVacia(o); }))); } catch(e){}
+  try { localStorage.setItem(DEMO ? 'mahra_alta_grilla_demo' : 'mahra_alta_grilla', JSON.stringify(Array.prototype.map.call(gBody.children, leerFila).filter(function(o){ return !filaVacia(o); }))); } catch(e){}
 }
 function restaurarGrilla(){
   var guardadas = [];
-  try { guardadas = JSON.parse(localStorage.getItem('mahra_alta_grilla') || '[]') || []; } catch(e){}
+  try { guardadas = JSON.parse(localStorage.getItem(DEMO ? 'mahra_alta_grilla_demo' : 'mahra_alta_grilla') || '[]') || []; } catch(e){}
   gBody.innerHTML = '';
   guardadas.forEach(function(o){ filaNueva(o, false); });
   while (gBody.children.length < Math.max(5, guardadas.length + 2)) filaNueva(null, true);
@@ -703,7 +732,10 @@ $('btnSug').addEventListener('click', function(){
 
 // ---- instructivo (instructivo.md del mismo repo; el PDF lo genera Claude con cada cambio) ----
 function mdInline(t){
+  var imgs = [];
+  t = t.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, function(m, alt, src){ imgs.push('<img src="' + esc(src) + '" alt="' + esc(alt) + '" style="max-width:100%;border:1px solid var(--bd);border-radius:8px;margin:6px 0;display:block">'); return '\u0000' + (imgs.length - 1) + '\u0000'; });
   t = esc(t);
+  t = t.replace(/\u0000(\d+)\u0000/g, function(m, i){ return imgs[Number(i)]; });
   t = t.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`(.+?)`/g, '<code>$1</code>');
   t = t.replace(/(https?:\/\/[^\s<)]+)/g, '<a href="$1" target="_blank">$1</a>');
   return t;
@@ -743,8 +775,8 @@ function cargarInstructivo(){
 }
 Array.prototype.forEach.call(document.querySelectorAll('#tabs button'), function(b){ b.addEventListener('click', function(){ if (b.dataset.t === 'instr') cargarInstructivo(); }); });
 
-sesion = leerSesion();
-if (sesion){ guardarSesion(sesion); cargar(); } else pedirIngreso();
+if (DEMO){ sesion = { token: 'demo', usuario: 'demo', vence: '2099-01-01' }; $('ingreso').classList.add('hide'); cargar(); }
+else { sesion = leerSesion(); if (sesion){ guardarSesion(sesion); cargar(); } else pedirIngreso(); }
 })();
 </script>
 </body>

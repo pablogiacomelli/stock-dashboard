@@ -7,11 +7,17 @@ actualizado: 2026-10-11
 
 Última modificación: 11/10/2026.
 
+El panel reemplaza la planilla CONTROL DE SKU. Se entra en https://pablogiacomelli.github.io/stock-dashboard/alta.html con el usuario y la contraseña del local (los mismos del panel de seguimiento de envíos). La sesión queda abierta 30 días en esa computadora. Para practicar sin tocar nada real, se puede abrir el panel con `?demo=1` al final de la dirección: muestra datos de ejemplo y no guarda.
+
+![Pantalla de ingreso: usuario y contraseña del local.](img/00-login.jpg)
+
 ## Parte 1: dar de alta artículos nuevos
 
-El panel reemplaza la planilla CONTROL DE SKU. Se entra en https://pablogiacomelli.github.io/stock-dashboard/alta.html con el usuario y la contraseña del local (los mismos del panel de seguimiento de envíos). La sesión queda abierta 30 días en esa computadora.
+El circuito completo es: Carga rápida → Pasar a la planilla → Agregar todo a pendientes → Procesar artículos → cargar la compra → descargar etiquetas.
 
 ### 1. Carga rápida (un modelo con varios talles)
+
+![Carga rápida completa: un modelo con los talles 35 a 40 marcados, lista para pasar a la planilla.](img/01-carga-rapida.jpg)
 
 1. En la pestaña **Alta**, cuadro **Carga rápida**, completá: código de proveedor, temporada (V27, I26), color, marca (SKU), rubro, categoría, costo, precio base y título.
 2. El título va como **Tipo | Modelo**, sin el color: por ejemplo `Balerina de Cuero | Siena`. El color y el talle se agregan solos en cada variante.
@@ -21,12 +27,16 @@ El panel reemplaza la planilla CONTROL DE SKU. Se entra en https://pablogiacomel
 
 ### 2. Planilla de alta
 
+![Planilla de alta con seis filas (una por talle) y el selector de responsable antes de agregar a pendientes.](img/02-planilla.jpg)
+
 - Es una fila por variante, como en el Excel. Podés corregir cualquier celda, agregar filas (**+ 5 filas**) o quitar una fila con la ×.
 - A la derecha de cada fila ves el SKU que se va a crear (`CODIGO-TEMPORADA-COLOR-TALLE-RUBRO-MARCA`) o el error en rojo: SKU que ya existe, color que no está en Colores, categoría vacía, etc.
 - Teclas: Enter baja a la fila siguiente, Ctrl+D copia la celda de arriba. También se pueden pegar varias filas copiadas de Excel, con las columnas en el mismo orden.
 - Lo que escribís queda guardado en esa computadora hasta que lo agregues a pendientes, aunque cierres el navegador.
 
 ### 3. Agregar a pendientes
+
+![Después de agregar: la planilla vacía, el aviso de variantes agregadas y la lista de pendientes con los botones Editar, Borrar y Procesar artículos.](img/03-pendientes.jpg)
 
 1. Elegí la **responsable** (quién está cargando) y apretá **Agregar todo a pendientes**. Las filas completas pasan a la lista **Pendientes de dar de alta**; las que tienen errores quedan en la planilla para corregir.
 2. En Pendientes podés **Editar** (vuelve a la planilla como primera fila) o **Borrar** una variante.
@@ -57,19 +67,33 @@ El panel reemplaza la planilla CONTROL DE SKU. Se entra en https://pablogiacomel
 | Marcas (SKU) | La "marca" de la planilla vieja: identifica al proveedor dentro del SKU (NF, VL, SA…) | Agregar una marca con su abreviatura. La abreviatura no se puede repetir |
 | Colores | Colores que se eligen al cargar | Agregar un color: Color SKU (la abreviatura, va en el SKU) y Detalle (el nombre que va en el título de la variante, por ejemplo COMBINADO VISON) |
 | Rubros | CALZADOS, CARTERAS, ACCESORIOS (van en el SKU) | Agregar un rubro con su código |
-| Sugerencias | Pedidos de mejora del panel o del circuito | Cargar una sugerencia con la responsable que la hace; se revisan periódicamente |
+| Sugerencias | Pedidos de mejora del panel o del circuito | Cargar una sugerencia con la responsable que la hace; se revisan de lunes a viernes a la mañana |
 | Instructivo | Este manual | Leerlo y descargarlo en PDF; muestra la fecha de la última modificación |
 
 ### Historial: volver a pendiente
+
+![Historial: artículos cargados y pendientes, con buscador. En los CARGADO aparece el botón Volver a pendiente.](img/04-historial.jpg)
 
 Si borraste en EcommApp un artículo que figura CARGADO (por ejemplo, uno creado sin compra), buscá el SKU en Historial y apretá **Volver a pendiente**. Vuelve a la lista de pendientes y el próximo Procesar artículos lo crea de nuevo. Si todavía existe en EcommApp, el alta lo detecta y no lo duplica.
 
 ### Marca comercial: la regla
 
+![Marca comercial: la tabla Proveedor → Marca con el desplegable por proveedor, y debajo el alta de proveedores y de marcas comerciales.](img/05-marca-comercial.jpg)
+
 - El **proveedor** de cada variante es siempre el de la compra (se asigna al cargar la compra).
 - La **marca comercial** sale de la tabla Proveedor → Marca: si el proveedor fabrica para nosotros, MAHRA; si no, su marca propia.
 - La **categoría** es la que se eligió en el alta.
 - Los tres datos se graban en EcommApp al cargar la compra, no al crear la variante.
+
+### Sugerencias
+
+![Sugerencias: se elige la responsable, se escribe la sugerencia y queda en la lista con su estado y la respuesta.](img/06-sugerencias.jpg)
+
+Cualquiera del equipo puede dejar una sugerencia de mejora. Se revisan de lunes a viernes a la mañana; el estado pasa a VISTA cuando fue leída y la respuesta aparece en la misma fila.
+
+### Instructivo
+
+![Instructivo: el manual dentro del panel, con la fecha de la última modificación y el botón Descargar PDF.](img/07-instructivo.jpg)
 
 ### Sesión
 
@@ -78,6 +102,8 @@ Si borraste en EcommApp un artículo que figura CARGADO (por ejemplo, uno creado
 ## Parte 3: el panel de carga de la compra
 
 Aparece en la pestaña de resultado que se abre al apretar **Procesar artículos**, debajo del resumen del alta, con las variantes recién creadas ya listadas. Cargar la compra ahí mismo es lo que deja cada variante con proveedor, marca comercial y categoría en EcommApp.
+
+![Resultado del alta: cuántas variantes se crearon y, debajo, el panel Cargar la compra con la barra Aplicar a todas.](img/08-compra-resultado.jpg)
 
 ### 1. Agregar artículos que ya estaban dados de alta
 
@@ -91,6 +117,8 @@ También se puede cargar una compra solo de artículos existentes: Procesar art�
 
 ### 2. Completar la compra
 
+![Las líneas de la compra: variante, costo, proveedor, cantidad, punto de venta y número de comprobante por fila.](img/09-compra-lineas.jpg)
+
 1. **Proveedor**: escribí parte del nombre y elegilo de la lista (son los proveedores de Compras de EcommApp). Tiene que elegirse de la lista; escrito a mano no vale.
 2. **Cantidad**: unidades compradas por variante. Una fila con cantidad 0 no entra en la compra.
 3. **Punto de venta** y **Número de comprobante**: los de la factura o recibo del proveedor. Punto de venta 9999 se carga como Recibo B sin IVA; cualquier otro, como Factura A con IVA 21%.
@@ -99,6 +127,8 @@ También se puede cargar una compra solo de artículos existentes: Procesar art�
 6. Las filas que comparten proveedor, punto de venta y número entran como una sola compra. Si hay dos proveedores, se cargan dos compras.
 
 ### 3. Procesar compra
+
+![Compra cargada: el resumen de la compra con el número de EcommApp, el resultado de proveedor, marca y categoría, y el botón de etiquetas habilitado.](img/10-compra-cargada.jpg)
 
 1. Apretá **Procesar compra**. El sistema carga la compra en EcommApp, con stock, en el depósito General, y muestra por cada compra: comprobante, proveedor, variantes, unidades, neto, IVA y total, con el número de compra de EcommApp.
 2. Debajo aparece **Proveedor, marca y categoría en EcommApp** con cuántas variantes se actualizaron. Si dice "sin categoría" o "sin marca comercial", revisá la categoría en el panel o la marca del proveedor en Marca comercial; la compra queda cargada igual.
