@@ -106,8 +106,16 @@ kbd{font:inherit;font-size:11px;background:#eee;border:1px solid #ccc;border-rad
 <!-- ===== ALTA ===== -->
 <section id="v-alta">
   <div class="card">
+    <h2>Carga rápida</h2>
+    <p class="sub">Una línea por artículo, en cualquier orden, con los datos separados por espacios. Ejemplo: <b>30 V27 NGR del 36 al 40 NF BALERINAS 45000 98000 Balerina de Cuero | Siena</b>. Reconoce el código (primer dato), la temporada (V27), el color (NGR), los talles (36 al 40, 36-40, 36,37,39 o 00), la marca (NF o su nombre), el rubro (si falta, CALZADOS), la categoría (BALERINAS, BOTAS Y TEXANAS…), costo y precio (los dos números grandes, en ese orden) y el resto queda como título. Lo que no ponés lo toma de la fila anterior. También podés pegar acá filas copiadas de Excel.</p>
+    <textarea id="rapida" rows="4" placeholder="30 V27 NGR del 36 al 40 NF BALERINAS 45000 98000 Balerina de Cuero | Siena&#10;7375 V27 NGR 36-40 NF SANDALIAS 52000 110000 Sandalia de Cuero | Jackie" style="font-family:Consolas,monospace;font-size:13px"></textarea>
+    <div class="barra"><button class="pri" id="btnRapida">Pasar a la planilla</button><span class="sub" style="margin:0">Después revisá la planilla de abajo y apretá "Agregar todo a pendientes".</span></div>
+    <div id="resRapida"></div>
+  </div>
+
+  <div class="card">
     <h2>Planilla de alta</h2>
-    <p class="sub">Una fila por artículo, como en el Excel. En <b>Talles</b> podés poner uno solo (36), un rango (35-40) o varios (36,37,39): se crea una variante por talle. Las filas nuevas copian temporada, marca, rubro y categoría de la fila de arriba. <kbd>Enter</kbd> baja a la fila siguiente, <kbd>Ctrl</kbd>+<kbd>D</kbd> copia la celda de arriba y podés pegar varias filas desde Excel. Lo que escribís queda guardado en esta compu hasta que lo agregues a pendientes.</p>
+    <p class="sub">Una fila por artículo, como en el Excel. En <b>Talles</b> podés poner uno solo (36), un rango (35-40) o varios (36,37,39): se crea una variante por talle. Las filas nuevas copian temporada, marca, rubro y categoría de la fila de arriba. <kbd>Enter</kbd> baja a la fila siguiente, <kbd>Ctrl</kbd>+<kbd>D</kbd> copia la celda de arriba y podés pegar varias filas desde Excel (columnas en este mismo orden). Lo que escribís queda guardado en esta compu hasta que lo agregues a pendientes.</p>
     <div class="gwrap">
       <table class="grilla" id="grilla">
         <thead><tr>
@@ -116,7 +124,7 @@ kbd{font:inherit;font-size:11px;background:#eee;border:1px solid #ccc;border-rad
         <tbody id="gBody"></tbody>
       </table>
     </div>
-    <datalist id="dlTemp"></datalist>
+    <datalist id="dlTemp"></datalist><datalist id="dlColor"></datalist><datalist id="dlMarca"></datalist><datalist id="dlRubro"></datalist><datalist id="dlCat"></datalist>
     <div class="barra">
       <button class="okb" id="btnGuardarTodo">Agregar todo a pendientes</button>
       <button class="sec" id="btnFilas">+ 5 filas</button>
@@ -186,10 +194,10 @@ kbd{font:inherit;font-size:11px;background:#eee;border:1px solid #ccc;border-rad
   <div class="scroll" style="margin-top:12px"><table><thead><tr><th>Marca</th><th>Abreviatura</th><th class="der">Artículos</th></tr></thead><tbody id="tbMarcas"></tbody></table></div>
 </div></section>
 <section id="v-colores" class="hide"><div class="card">
-  <h2>Colores</h2><p class="sub">Color sistema: lo que se elige al cargar. Color SKU: lo que va en el SKU. Detalle: el nombre que va en el título de la variante.</p>
-  <div class="grid"><div><label>Color sistema</label><input id="cSis" maxlength="6"></div><div><label>Color SKU</label><input id="cSku" maxlength="6"></div><div class="w2"><label>Detalle</label><input id="cDet" placeholder="Ej. COMBINADO NUDE"></div><div style="align-self:end"><button class="pri" id="btnColor">Agregar color</button></div></div>
+  <h2>Colores</h2><p class="sub">Color SKU: la abreviatura que se escribe al cargar y va en el SKU. Detalle: el nombre que va en el título de la variante.</p>
+  <div class="grid"><div><label>Color SKU</label><input id="cSku" maxlength="6"></div><div class="w2"><label>Detalle</label><input id="cDet" placeholder="Ej. COMBINADO NUDE"></div><div style="align-self:end"><button class="pri" id="btnColor">Agregar color</button></div></div>
   <div id="resColor"></div>
-  <div class="scroll" style="margin-top:12px"><table><thead><tr><th>Color sistema</th><th>Color SKU</th><th>Detalle</th><th class="der">Artículos</th></tr></thead><tbody id="tbColores"></tbody></table></div>
+  <div class="scroll" style="margin-top:12px"><table><thead><tr><th>Color SKU</th><th>Detalle</th><th class="der">Artículos</th></tr></thead><tbody id="tbColores"></tbody></table></div>
 </div></section>
 <section id="v-rubros" class="hide"><div class="card">
   <h2>Rubros</h2>
@@ -283,8 +291,9 @@ Array.prototype.forEach.call(document.querySelectorAll('#tabs button'), function
 });
 
 function opcionesMarcaCom(sel){ return '<option value="">Sin marca</option>' + D.marcas_comerciales.map(function(m){ return '<option value="' + esc(m.nombre) + '"' + (U(m.nombre) === U(sel) ? ' selected' : '') + '>' + esc(m.nombre) + '</option>'; }).join(''); }
+var SELECTS = { color: 1, marca: 1, rubro: 1, cat: 1 };
 function opts(tipo){
-  if (tipo === 'color') return '<option value=""></option>' + D.colores.map(function(c){ return '<option value="'+esc(c.color_sistema)+'">'+esc(c.color_sistema)+' · '+esc(c.detalle)+'</option>'; }).join('');
+  if (tipo === 'color') return '<option value=""></option>' + D.colores.map(function(c){ return '<option value="'+esc(c.color_sku)+'">'+esc(c.color_sku)+' · '+esc(c.detalle)+'</option>'; }).join('');
   if (tipo === 'marca') return '<option value=""></option>' + D.marcas.map(function(m){ return '<option value="'+esc(m.nombre)+'">'+esc(m.nombre)+' ('+esc(m.codigo)+')</option>'; }).join('');
   if (tipo === 'rubro') return '<option value=""></option>' + D.rubros.map(function(r){ return '<option value="'+esc(r.nombre)+'">'+esc(r.nombre)+'</option>'; }).join('');
   return '<option value=""></option>' + D.categorias.map(function(c){ return '<option value="'+esc(c.nombre)+'">'+esc(c.nombre)+'</option>'; }).join('');
@@ -293,14 +302,18 @@ function llenarSelects(){
   $('pmMarca').innerHTML = opcionesMarcaCom('');
   var temps = {}; D.articulos.forEach(function(a){ if (a.temporada) temps[U(a.temporada)] = 1; });
   $('dlTemp').innerHTML = Object.keys(temps).sort().reverse().map(function(t){ return '<option value="' + esc(t) + '">'; }).join('');
+  $('dlColor').innerHTML = D.colores.map(function(c){ return '<option value="' + esc(c.color_sku) + '">' + esc(c.detalle) + '</option>'; }).join('');
+  $('dlMarca').innerHTML = D.marcas.map(function(m){ return '<option value="' + esc(m.nombre) + '">' + esc(m.codigo) + '</option>'; }).join('');
+  $('dlRubro').innerHTML = D.rubros.map(function(r){ return '<option value="' + esc(r.nombre) + '">' + esc(r.codigo) + '</option>'; }).join('');
+  $('dlCat').innerHTML = D.categorias.map(function(c){ return '<option value="' + esc(c.nombre) + '">'; }).join('');
 }
 
 // ===== PLANILLA DE ALTA (grilla) =====
 var gBody = $('gBody');
 function celda(tipo, nombre, valor){
   var el;
-  if (tipo === 'select'){ el = document.createElement('select'); el.innerHTML = opts(nombre); el.value = valor || ''; }
-  else { el = document.createElement('input'); el.value = valor == null ? '' : valor; if (nombre === 'temp'){ el.setAttribute('list','dlTemp'); el.maxLength = 3; } if (nombre === 'costo' || nombre === 'precio') el.inputMode = 'decimal'; el.autocomplete = 'off'; }
+  if (SELECTS[nombre]){ el = document.createElement('select'); el.innerHTML = opts(nombre); el.value = valorParaSelect(nombre, valor || ''); }
+  else { el = document.createElement('input'); el.value = valor == null ? '' : valor; el.autocomplete = 'off'; if (nombre === 'temp'){ el.setAttribute('list','dlTemp'); el.maxLength = 3; } if (nombre === 'costo' || nombre === 'precio') el.inputMode = 'decimal'; }
   el.className = 'g-' + nombre; el.dataset.col = nombre;
   var td = document.createElement('td'); td.appendChild(el); return td;
 }
@@ -340,7 +353,7 @@ function talles(txt){
 // Valida una fila y arma sus variantes (SKU = CODIGO-TEMP-COLOR-TALLE-RUBRO-MARCA). ocupados: SKUs de otras filas de la grilla.
 function armarFila(o, ocupados){
   var cp = U(o.cod), temp = U(o.temp), color = U(o.color), marca = U(o.marca), rubro = U(o.rubro), cat = U(o.cat);
-  var c = D.colores.filter(function(x){ return U(x.color_sistema) === color; })[0];
+  var c = D.colores.filter(function(x){ return U(x.color_sku) === color || U(x.color_sistema) === color; })[0];
   var m = D.marcas.filter(function(x){ return U(x.nombre) === marca; })[0];
   var r = D.rubros.filter(function(x){ return U(x.nombre) === rubro; })[0];
   var k = D.categorias.filter(function(x){ return U(x.nombre) === cat; })[0];
@@ -368,6 +381,8 @@ function validarGrilla(){
   var ocupados = {}, res = [];
   Array.prototype.forEach.call(gBody.children, function(tr){
     var o = leerFila(tr); var est = tr.querySelector('.est');
+    // lo tipeado (NGR, NF, CAL, abreviaturas) se pasa al valor oficial de la lista
+    ['color','marca','rubro','cat'].forEach(function(c){ var can = valorParaSelect(c, o[c]); if (can !== o[c] && document.activeElement !== tr.querySelector('.g-' + c)){ tr.querySelector('.g-' + c).value = can; o[c] = can; } });
     if (filaVacia(o)){ tr.classList.remove('mal'); est.innerHTML = ''; res.push({ tr: tr, vacia: true }); return; }
     var a = armarFila(o, ocupados);
     a.filas.forEach(function(f){ ocupados[f.sku] = 1; });
@@ -395,7 +410,7 @@ function restaurarGrilla(){
   validarGrilla();
 }
 function refrescarSelectsGrilla(){
-  Array.prototype.forEach.call(gBody.querySelectorAll('select'), function(s){ var v = s.value; s.innerHTML = opts(s.dataset.col); s.value = v; });
+  Array.prototype.forEach.call(gBody.querySelectorAll('select'), function(sel){ var v = sel.value; sel.innerHTML = opts(sel.dataset.col); sel.value = v; });
   validarGrilla();
 }
 var gTimer = null;
@@ -425,7 +440,7 @@ gBody.addEventListener('keydown', function(ev){
 // pegar desde Excel: varias celdas / filas a partir de la celda activa
 function valorParaSelect(col, txt){
   var t = U(txt); if (!t) return '';
-  if (col === 'color'){ var c = D.colores.filter(function(x){ return U(x.color_sistema) === t || U(x.color_sku) === t || U(x.detalle) === t; })[0]; return c ? c.color_sistema : txt; }
+  if (col === 'color'){ var c = D.colores.filter(function(x){ return U(x.color_sku) === t || U(x.color_sistema) === t || U(x.detalle) === t; })[0]; return c ? c.color_sku : txt; }
   if (col === 'marca'){ var m = D.marcas.filter(function(x){ return U(x.nombre) === t || U(x.codigo) === t; })[0]; return m ? m.nombre : txt; }
   if (col === 'rubro'){ var r = D.rubros.filter(function(x){ return U(x.nombre) === t || U(x.codigo) === t; })[0]; return r ? r.nombre : txt; }
   if (col === 'cat'){ var k = D.categorias.filter(function(x){ return U(x.nombre) === t; })[0]; return k ? k.nombre : txt; }
@@ -445,6 +460,71 @@ gBody.addEventListener('paste', function(ev){
     tr = tr.nextElementSibling;
   });
   validarGrilla(); guardarGrillaLocal();
+});
+// ===== CARGA RAPIDA: una linea de texto por articulo =====
+// Lee de izquierda a derecha: codigo, y despues temporada / color / talles (36 al 40, 36-40, 36,37) / marca / rubro / categoria /
+// costo y precio (los numeros grandes) en cualquier orden. En el primer dato que no reconoce empieza el titulo.
+function parsearLinea(linea){
+  var raw = String(linea || '').replace(/\r/g, '').trim(); if (!raw) return null;
+  var toks = raw.indexOf('\t') >= 0 ? raw.split('\t').map(function(s){ return s.trim(); }).filter(Boolean) : raw.split(/\s+/);
+  var up = toks.map(U);
+  var o = { cod: up[0], temp: undefined, color: undefined, talles: '', marca: undefined, rubro: undefined, cat: undefined, costo: '', precio: '', titulo: '', obs: '' };
+  var listas = [
+    { campo: 'cat', items: D.categorias.map(function(c){ return { claves: [U(c.nombre)], valor: c.nombre }; }) },
+    { campo: 'color', items: D.colores.map(function(c){ return { claves: [U(c.color_sku), U(c.color_sistema), U(c.detalle)], valor: c.color_sku }; }) },
+    { campo: 'marca', items: D.marcas.map(function(m){ return { claves: [U(m.nombre), U(m.codigo)], valor: m.nombre }; }) },
+    { campo: 'rubro', items: D.rubros.map(function(r){ return { claves: [U(r.nombre), U(r.codigo)], valor: r.nombre }; }) }
+  ];
+  function ventana(i){
+    for (var w = 3; w >= 1; w--){
+      if (i + w > toks.length) continue;
+      var frase = up.slice(i, i + w).join(' ');
+      for (var l = 0; l < listas.length; l++){
+        if (o[listas[l].campo] !== undefined) continue;
+        for (var k = 0; k < listas[l].items.length; k++) if (listas[l].items[k].claves.indexOf(frase) >= 0) return { campo: listas[l].campo, valor: listas[l].items[k].valor, len: w };
+      }
+    }
+    return null;
+  }
+  var talles = [], nums = [], rango = false, i = 1;
+  function esTalle(t){ return t === '00' || (/^\d{2}$/.test(t) && +t >= 30 && +t <= 46); }
+  while (i < toks.length){
+    var t = up[i], m;
+    if (o.temp === undefined && /^[A-Z]\d{2}$/.test(t)){ o.temp = t; i++; continue; }
+    if (t === 'DEL' || t === 'DE' || t === 'Y' || t === ','){ i++; continue; }
+    if (t === 'AL' || t === 'A' || t === 'HASTA'){ rango = true; i++; continue; }
+    if ((m = /^(\d{2})\s*[-\/]\s*(\d{2})$/.exec(t)) && esTalle(m[1]) && esTalle(m[2])){ for (var a = +m[1]; a <= +m[2]; a++) talles.push(String(a)); i++; continue; }
+    if (/^\d{2}(,\d{2})+,?$/.test(t)){ t.split(',').forEach(function(x){ if (esTalle(x)) talles.push(x); }); i++; continue; }
+    if (esTalle(t.replace(/,$/, ''))){
+      t = t.replace(/,$/, '');
+      if (rango && talles.length){ for (var b = +talles[talles.length - 1] + 1; b <= +t; b++) talles.push(String(b)); }
+      else talles.push(t);
+      rango = false; i++; continue;
+    }
+    if (/^\$?\d[\d.,]*$/.test(t) && num(t) >= 100){ nums.push(num(t)); i++; continue; }
+    var v = ventana(i);
+    if (v){ o[v.campo] = v.valor; i += v.len; continue; }
+    break;
+  }
+  o.titulo = toks.slice(i).join(' ').trim();
+  o.talles = talles.filter(function(x, k){ return talles.indexOf(x) === k; }).join(',');
+  if (nums.length) o.costo = nums[0]; if (nums.length > 1) o.precio = nums[1];
+  if (o.rubro === undefined && o.cat && (U(o.cat) === 'CARTERAS' || U(o.cat) === 'ACCESORIOS')) o.rubro = o.cat;
+  return o;
+}
+$('btnRapida').addEventListener('click', function(){
+  var lineas = $('rapida').value.split('\n').filter(function(l){ return l.trim(); });
+  if (!lineas.length){ $('resRapida').innerHTML = '<div class="msg err">Escribí al menos una línea.</div>'; return; }
+  // saca las filas vacías del final para que las nuevas queden seguidas
+  while (gBody.lastElementChild && filaVacia(leerFila(gBody.lastElementChild))) gBody.lastElementChild.remove();
+  var n = 0;
+  lineas.forEach(function(l){ var o = parsearLinea(l); if (o){ filaNueva(o, true); n++; } });
+  for (var k = 0; k < 2; k++) filaNueva(null, true);
+  var res = validarGrilla(); guardarGrillaLocal();
+  var mal = res.filter(function(x){ return !x.vacia && x.a.errores.length; }).length;
+  $('resRapida').innerHTML = '<div class="msg ' + (mal ? 'av' : 'ok') + '">' + n + ' fila(s) pasadas a la planilla' + (mal ? ', ' + mal + ' con datos para completar (en rojo)' : '') + '. Revisá y apretá "Agregar todo a pendientes".</div>';
+  $('rapida').value = '';
+  var primera = gBody.querySelector('tr.mal') || gBody.lastElementChild; if (primera) primera.scrollIntoView({ block: 'center' });
 });
 $('btnFilas').addEventListener('click', function(){ for (var i = 0; i < 5; i++) filaNueva(null, true); });
 $('btnVaciar').addEventListener('click', function(){ if (!confirm('¿Vaciar toda la planilla? Lo que no se agregó a pendientes se pierde.')) return; gBody.innerHTML = ''; for (var i = 0; i < 5; i++) filaNueva(null, true); validarGrilla(); guardarGrillaLocal(); $('resGuardar').innerHTML = ''; });
@@ -548,7 +628,7 @@ function cuenta(campo){ var c = {}; D.articulos.forEach(function(a){ var k = U(a
 function pintarCatalogos(){
   var cm = cuenta('marca'), cc = cuenta('color'), cr = cuenta('rubro'), ck = cuenta('categoria');
   $('tbMarcas').innerHTML = D.marcas.map(function(m){ return '<tr><td>' + esc(m.nombre) + '</td><td class="mono">' + esc(m.codigo) + '</td><td class="der">' + (cm[U(m.nombre)]||0) + '</td></tr>'; }).join('');
-  $('tbColores').innerHTML = D.colores.map(function(c){ return '<tr><td class="mono">' + esc(c.color_sistema) + '</td><td class="mono">' + esc(c.color_sku) + '</td><td>' + esc(c.detalle) + '</td><td class="der">' + (cc[U(c.color_sistema)]||0) + '</td></tr>'; }).join('');
+  $('tbColores').innerHTML = D.colores.slice().sort(function(a,b){ return String(a.color_sku).localeCompare(String(b.color_sku)); }).map(function(c){ return '<tr><td class="mono">' + esc(c.color_sku) + '</td><td>' + esc(c.detalle) + '</td><td class="der">' + ((cc[U(c.color_sku)]||0) + (U(c.color_sku) !== U(c.color_sistema) ? (cc[U(c.color_sistema)]||0) : 0)) + '</td></tr>'; }).join('');
   $('tbRubros').innerHTML = D.rubros.map(function(r){ return '<tr><td>' + esc(r.nombre) + '</td><td class="mono">' + esc(r.codigo) + '</td><td class="der">' + (cr[U(r.nombre)]||0) + '</td></tr>'; }).join('');
   $('tbCats').innerHTML = D.categorias.map(function(c){ return '<tr><td>' + esc(c.nombre) + '</td><td class="der mono">' + esc(c.id_ecommapp || '') + '</td><td class="der">' + (ck[U(c.nombre)]||0) + '</td></tr>'; }).join('') || '<tr><td colspan="3" class="sub" style="padding:14px">No hay categorías.</td></tr>';
   var cp = {}; D.proveedor_marca.forEach(function(x){ var k = U(x.marca); if (k) cp[k] = (cp[k]||0) + 1; });
@@ -568,7 +648,7 @@ function agregarCatalogo(tipo, fila, res, limpiarIds){
   }).catch(function(e){ if (e.message !== 'sin sesión') r.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; });
 }
 $('btnMarca').addEventListener('click', function(){ agregarCatalogo('marca', { nombre: $('mNombre').value, codigo: $('mCodigo').value }, 'resMarca', ['mNombre','mCodigo']); });
-$('btnColor').addEventListener('click', function(){ agregarCatalogo('color', { color_sistema: $('cSis').value, color_sku: $('cSku').value || $('cSis').value, detalle: $('cDet').value }, 'resColor', ['cSis','cSku','cDet']); });
+$('btnColor').addEventListener('click', function(){ agregarCatalogo('color', { color_sistema: $('cSku').value, color_sku: $('cSku').value, detalle: $('cDet').value }, 'resColor', ['cSku','cDet']); });
 $('btnRubro').addEventListener('click', function(){ agregarCatalogo('rubro', { nombre: $('rNombre').value, codigo: $('rCodigo').value }, 'resRubro', ['rNombre','rCodigo']); });
 $('btnCat').addEventListener('click', function(){ agregarCatalogo('categoria', { nombre: $('catNombre').value }, 'resCat', ['catNombre']); });
 $('btnMCom').addEventListener('click', function(){ agregarCatalogo('marca_comercial', { nombre: $('mcNombre').value }, 'resMCom', ['mcNombre']); });
