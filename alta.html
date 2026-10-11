@@ -29,6 +29,7 @@ label{display:block;font-size:12px;color:var(--mut);margin-bottom:3px;font-weigh
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--mut);border-bottom:2px solid var(--bd);padding:7px 6px;position:sticky;top:0;background:var(--card)}
 td{border-bottom:1px solid var(--bd);padding:6px;vertical-align:top}
+td select{padding:4px 6px;min-width:150px}
 .mono{font-family:Consolas,monospace;font-size:12.5px}
 .der{text-align:right}
 .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px}
@@ -78,7 +79,9 @@ td{border-bottom:1px solid var(--bd);padding:6px;vertical-align:top}
 <nav id="tabs">
   <button data-t="alta" class="on">Alta</button>
   <button data-t="hist">Historial</button>
-  <button data-t="marcas">Marcas</button>
+  <button data-t="cats">Categorías</button>
+  <button data-t="mcom">Marca comercial</button>
+  <button data-t="marcas">Marcas (SKU)</button>
   <button data-t="colores">Colores</button>
   <button data-t="rubros">Rubros</button>
 </nav>
@@ -89,14 +92,15 @@ td{border-bottom:1px solid var(--bd);padding:6px;vertical-align:top}
 <section id="v-alta">
   <div class="card">
     <h2 id="tituloForm">Nuevo artículo</h2>
-    <p class="sub">Cargá el modelo una vez y los talles juntos (por ejemplo <b>35-40</b>, o <b>36,37,38</b>; carteras y accesorios van <b>00</b>). El SKU se arma solo. El código de barras ya no se carga acá: lo asigna el sistema al descargar las etiquetas de la compra.</p>
+    <p class="sub">Cargá el modelo una vez y los talles juntos (por ejemplo <b>35-40</b>, o <b>36,37,38</b>; carteras y accesorios van <b>00</b>). El SKU se arma solo. El código de barras ya no se carga acá: lo asigna el sistema al descargar las etiquetas de la compra. El proveedor y la marca comercial se asignan en EcommApp al cargar la compra.</p>
     <div class="grid">
       <div><label>Código proveedor</label><input id="fCodigo" placeholder="Ej. 7375"></div>
       <div><label>Temporada</label><input id="fTemp" placeholder="Ej. V27" maxlength="3"></div>
       <div><label>Color</label><select id="fColor"></select></div>
       <div><label>Talles</label><input id="fTalles" placeholder="35-40"></div>
-      <div><label>Marca</label><select id="fMarca"></select></div>
+      <div><label>Marca (SKU)</label><select id="fMarca"></select></div>
       <div><label>Rubro</label><select id="fRubro"></select></div>
+      <div><label>Categoría</label><select id="fCat"></select></div>
       <div><label>Costo</label><input id="fCosto" inputmode="decimal" placeholder="0"></div>
       <div><label>Precio base</label><input id="fPrecio" inputmode="decimal" placeholder="0"></div>
       <div class="w2"><label>Título (Tipo | Modelo, sin color)</label><input id="fTitulo" placeholder="Sandalia de Cuero | Jackie"></div>
@@ -114,7 +118,7 @@ td{border-bottom:1px solid var(--bd);padding:6px;vertical-align:top}
   <div class="card">
     <h2>Pendientes de dar de alta</h2>
     <p class="sub">Lo que se carga en EcommApp al apretar <b>Procesar artículos</b>. Después aparece la pantalla de la compra, para cargarla y bajar las etiquetas.</p>
-    <div class="scroll"><table><thead><tr><th>SKU</th><th>Descripción etiqueta</th><th>Título</th><th>Marca</th><th class="der">Costo</th><th class="der">Precio</th><th>Cargó</th><th></th></tr></thead><tbody id="tbPend"></tbody></table></div>
+    <div class="scroll"><table><thead><tr><th>SKU</th><th>Descripción etiqueta</th><th>Título</th><th>Categoría</th><th>Marca (SKU)</th><th class="der">Costo</th><th class="der">Precio</th><th>Cargó</th><th></th></tr></thead><tbody id="tbPend"></tbody></table></div>
     <div class="barra">
       <button class="okb" id="btnProcesar">▶ Procesar artículos</button>
       <button class="sec" id="btnVista">Vista previa (no carga nada)</button>
@@ -128,15 +132,43 @@ td{border-bottom:1px solid var(--bd);padding:6px;vertical-align:top}
   <div class="card">
     <h2>Historial de artículos</h2>
     <div class="kpis" id="kpisHist"></div>
-    <div class="barra"><input id="buscaHist" placeholder="Buscar por SKU, título, marca, temporada…" style="max-width:420px"></div>
+    <div class="barra"><input id="buscaHist" placeholder="Buscar por SKU, título, marca, temporada, categoría…" style="max-width:420px"></div>
     <p class="sub" id="infoHist" style="margin-top:8px"></p>
-    <div class="scroll"><table><thead><tr><th>SKU</th><th>Título</th><th>Marca</th><th>Código de barras</th><th>Código etiqueta</th><th>Descripción etiqueta</th><th class="der">Costo</th><th class="der">Precio</th><th>Estado</th><th>Origen</th></tr></thead><tbody id="tbHist"></tbody></table></div>
+    <div class="scroll"><table><thead><tr><th>SKU</th><th>Título</th><th>Categoría</th><th>Marca (SKU)</th><th>Código de barras</th><th>Código etiqueta</th><th>Descripción etiqueta</th><th class="der">Costo</th><th class="der">Precio</th><th>Estado</th><th>Origen</th></tr></thead><tbody id="tbHist"></tbody></table></div>
   </div>
 </section>
 
-<!-- ===== CATALOGOS ===== -->
+<!-- ===== CATEGORIAS ===== -->
+<section id="v-cats" class="hide"><div class="card">
+  <h2>Categorías</h2><p class="sub">Es la categoría del artículo en EcommApp (Zapatillas, Borcegos, Sandalias…). Al agregar una acá se crea también en EcommApp, en Categorías y marcas.</p>
+  <div class="grid"><div class="w2"><label>Categoría</label><input id="catNombre" placeholder="Ej. MOCASINES"></div><div style="align-self:end"><button class="pri" id="btnCat">Agregar categoría</button></div></div>
+  <div id="resCat"></div>
+  <div class="scroll" style="margin-top:12px"><table><thead><tr><th>Categoría</th><th class="der">ID EcommApp</th><th class="der">Artículos</th></tr></thead><tbody id="tbCats"></tbody></table></div>
+</div></section>
+
+<!-- ===== MARCA COMERCIAL ===== -->
+<section id="v-mcom" class="hide">
+  <div class="card">
+    <h2>Proveedor → Marca comercial</h2>
+    <p class="sub">Al cargar una compra, cada variante queda en EcommApp con el proveedor de la compra y con la marca que figura acá para ese proveedor. Si el proveedor fabrica para nosotros, la marca es MAHRA; si no, la suya. Sin marca asignada, la variante queda solo con el proveedor.</p>
+    <div class="scroll"><table><thead><tr><th>Proveedor (EcommApp)</th><th class="der">ID</th><th>Marca comercial</th><th></th></tr></thead><tbody id="tbProvMarca"></tbody></table></div>
+    <div id="resProvMarca"></div>
+    <h2 style="margin-top:18px">Agregar proveedor</h2>
+    <p class="sub">Buscalo por nombre en la lista de proveedores de EcommApp (los mismos de Compras).</p>
+    <div class="grid"><div class="w2"><label>Proveedor</label><input id="pmProv" list="pmLista" placeholder="Escribí 2 letras y elegí de la lista" autocomplete="off"><datalist id="pmLista"></datalist></div><div><label>Marca comercial</label><select id="pmMarca"></select></div><div style="align-self:end"><button class="pri" id="btnProvMarca">Agregar</button></div></div>
+    <div id="resProvMarcaAlta"></div>
+  </div>
+  <div class="card">
+    <h2>Marcas comerciales</h2><p class="sub">Las marcas con las que se venden los artículos (MAHRA o la marca propia del proveedor). Al agregar una acá se crea también en EcommApp.</p>
+    <div class="grid"><div class="w2"><label>Marca</label><input id="mcNombre" placeholder="Ej. MAHRA"></div><div style="align-self:end"><button class="pri" id="btnMCom">Agregar marca comercial</button></div></div>
+    <div id="resMCom"></div>
+    <div class="scroll" style="margin-top:12px"><table><thead><tr><th>Marca comercial</th><th class="der">ID EcommApp</th><th class="der">Proveedores</th></tr></thead><tbody id="tbMCom"></tbody></table></div>
+  </div>
+</section>
+
+<!-- ===== CATALOGOS DEL SKU ===== -->
 <section id="v-marcas" class="hide"><div class="card">
-  <h2>Marcas</h2><p class="sub">La abreviatura es la que va al final del SKU. No se puede repetir.</p>
+  <h2>Marcas (SKU)</h2><p class="sub">Es la "marca" de la planilla: identifica al proveedor dentro del SKU. La abreviatura va al final del SKU y no se puede repetir. La marca comercial con la que se vende se define en la pestaña Marca comercial.</p>
   <div class="grid"><div class="w2"><label>Marca</label><input id="mNombre"></div><div><label>Abreviatura para SKU</label><input id="mCodigo" maxlength="4"></div><div style="align-self:end"><button class="pri" id="btnMarca">Agregar marca</button></div></div>
   <div id="resMarca"></div>
   <div class="scroll" style="margin-top:12px"><table><thead><tr><th>Marca</th><th>Abreviatura</th><th class="der">Artículos</th></tr></thead><tbody id="tbMarcas"></tbody></table></div>
@@ -162,6 +194,7 @@ td{border-bottom:1px solid var(--bd);padding:6px;vertical-align:top}
 var API = 'https://n8n.mahra-ai.online/webhook/alta-panel-api';
 var LOGIN = 'https://n8n.mahra-ai.online/webhook/panel-acceso';
 var ALTA = 'https://n8n.mahra-ai.online/webhook/alta-articulos-ecommapp';
+var TABS = ['alta','hist','cats','mcom','marcas','colores','rubros'];
 var sesion = null, D = null, editando = null;
 function $(id){ return document.getElementById(id); }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -214,7 +247,8 @@ function cargar(){
   estado('Cargando artículos…');
   return api({ accion:'leer' }).then(function(j){
     if (!j.ok) throw new Error(j.error || 'No se pudo leer');
-    D = j; estado('');
+    D = j; D.categorias = D.categorias || []; D.marcas_comerciales = D.marcas_comerciales || []; D.proveedor_marca = D.proveedor_marca || [];
+    estado('');
     $('app').classList.remove('hide');
     $('usuario').textContent = j.usuario || '';
     llenarSelects(); pintarTodo();
@@ -226,17 +260,20 @@ $('btnRecargar').addEventListener('click', cargar);
 Array.prototype.forEach.call(document.querySelectorAll('#tabs button'), function(b){
   b.addEventListener('click', function(){
     Array.prototype.forEach.call(document.querySelectorAll('#tabs button'), function(x){ x.classList.toggle('on', x === b); });
-    ['alta','hist','marcas','colores','rubros'].forEach(function(t){ $('v-' + t).classList.toggle('hide', t !== b.dataset.t); });
+    TABS.forEach(function(t){ $('v-' + t).classList.toggle('hide', t !== b.dataset.t); });
   });
 });
 
+function opcionesMarcaCom(sel){ return '<option value="">Sin marca</option>' + D.marcas_comerciales.map(function(m){ return '<option value="' + esc(m.nombre) + '"' + (U(m.nombre) === U(sel) ? ' selected' : '') + '>' + esc(m.nombre) + '</option>'; }).join(''); }
 function llenarSelects(){
-  var col = $('fColor'), mar = $('fMarca'), rub = $('fRubro');
-  var vc = col.value, vm = mar.value, vr = rub.value;
+  var col = $('fColor'), mar = $('fMarca'), rub = $('fRubro'), cat = $('fCat');
+  var vc = col.value, vm = mar.value, vr = rub.value, vk = cat.value;
   col.innerHTML = '<option value="">Elegí…</option>' + D.colores.map(function(c){ return '<option value="'+esc(c.color_sistema)+'">'+esc(c.color_sistema)+' · '+esc(c.detalle)+'</option>'; }).join('');
   mar.innerHTML = '<option value="">Elegí…</option>' + D.marcas.map(function(m){ return '<option value="'+esc(m.nombre)+'">'+esc(m.nombre)+' ('+esc(m.codigo)+')</option>'; }).join('');
   rub.innerHTML = '<option value="">Elegí…</option>' + D.rubros.map(function(r){ return '<option value="'+esc(r.nombre)+'">'+esc(r.nombre)+'</option>'; }).join('');
-  col.value = vc; mar.value = vm; rub.value = vr || (D.rubros[0] ? D.rubros[0].nombre : '');
+  cat.innerHTML = '<option value="">Elegí…</option>' + D.categorias.map(function(c){ return '<option value="'+esc(c.nombre)+'">'+esc(c.nombre)+'</option>'; }).join('');
+  col.value = vc; mar.value = vm; rub.value = vr || (D.rubros[0] ? D.rubros[0].nombre : ''); cat.value = vk;
+  $('pmMarca').innerHTML = opcionesMarcaCom('');
 }
 
 // ---- formulario: arma las variantes como la planilla (SKU = CODIGO-TEMP-COLOR-TALLE-RUBRO-MARCA) ----
@@ -251,21 +288,23 @@ function talles(txt){
   return out.filter(function(t, i){ return out.indexOf(t) === i; });
 }
 function armar(){
-  var cp = U($('fCodigo').value), temp = U($('fTemp').value), color = U($('fColor').value), marca = U($('fMarca').value), rubro = U($('fRubro').value);
+  var cp = U($('fCodigo').value), temp = U($('fTemp').value), color = U($('fColor').value), marca = U($('fMarca').value), rubro = U($('fRubro').value), cat = U($('fCat').value);
   var c = D.colores.filter(function(x){ return U(x.color_sistema) === color; })[0];
   var m = D.marcas.filter(function(x){ return U(x.nombre) === marca; })[0];
   var r = D.rubros.filter(function(x){ return U(x.nombre) === rubro; })[0];
+  var k = D.categorias.filter(function(x){ return U(x.nombre) === cat; })[0];
   var titulo = $('fTitulo').value.replace(/\s+/g,' ').trim();
   var errores = [], avisos = [];
   if (!cp) errores.push('Falta el código de proveedor.'); else if (/[-\s]/.test(cp)) errores.push('El código de proveedor no puede tener guiones ni espacios.');
   if (!/^[A-Z]\d{2}$/.test(temp)) errores.push('Temporada inválida: tiene que ser letra + 2 números (V27, I26).');
-  if (!c) errores.push('Elegí el color.'); if (!m) errores.push('Elegí la marca.'); if (!r) errores.push('Elegí el rubro.');
+  if (!c) errores.push('Elegí el color.'); if (!m) errores.push('Elegí la marca (SKU).'); if (!r) errores.push('Elegí el rubro.'); if (!k) errores.push('Elegí la categoría.');
   var ts = talles($('fTalles').value); if (!ts.length) errores.push('Poné los talles (35-40, o 00 para carteras).');
   if (!titulo) errores.push('Falta el título.');
   else {
     if (titulo.indexOf('|') < 0) avisos.push('El título no tiene "|" (Tipo | Modelo): el título de la variante sale mejor con "Sandalia de Cuero | Jackie".');
     if (c && c.detalle && U(titulo).indexOf(U(c.detalle).split(' ').pop()) >= 0) avisos.push('El título parece traer el color: el color se agrega solo en cada variante.');
   }
+  if (k && r && ((U(r.nombre) === 'CARTERAS' && cat !== 'CARTERAS') || (U(r.nombre) === 'ACCESORIOS' && cat !== 'ACCESORIOS') || (U(r.nombre) === 'CALZADOS' && (cat === 'CARTERAS' || cat === 'ACCESORIOS')))) avisos.push('El rubro ' + r.nombre + ' y la categoría ' + cat + ' no parecen ir juntos: revisá.');
   var existentes = {}; D.articulos.forEach(function(a){ if (!editando || a.id !== editando.id) existentes[U(a.sku)] = a; });
   var filas = ts.map(function(t){
     var sku = [cp, temp, c ? U(c.color_sku) : '?', t, r ? U(r.codigo) : '?', m ? U(m.codigo) : '?'].join('-');
@@ -275,22 +314,22 @@ function armar(){
   filas.forEach(function(f){ if (f.ya) errores.push('El SKU ' + f.sku + ' ya existe (' + (f.ya.estado === 'CARGADO' ? 'cargado en EcommApp' : 'pendiente') + ').'); });
   var temps = {}; D.articulos.forEach(function(a){ if (U(a.codigo_proveedor) === cp && a.estado !== 'CARGADO' && (!editando || a.id !== editando.id)) temps[a.temporada] = 1; });
   if (cp && temp && Object.keys(temps).length && !temps[temp]) avisos.push('Hay pendientes del modelo ' + cp + ' con otra temporada (' + Object.keys(temps).join(', ') + '): revisá.');
-  return { cp: cp, temp: temp, color: color, marca: marca, rubro: rubro, titulo: titulo, filas: filas, errores: errores, avisos: avisos };
+  return { cp: cp, temp: temp, color: color, marca: marca, rubro: rubro, categoria: cat, titulo: titulo, filas: filas, errores: errores, avisos: avisos };
 }
 function preview(){
   if (!D) return;
   var a = armar(), h = '';
-  if (a.filas.length) h += '<table style="margin-top:12px"><thead><tr><th>SKU que se va a crear</th><th>Descripción etiqueta</th></tr></thead><tbody>' + a.filas.map(function(f){ return '<tr class="prev"><td class="mono">' + esc(f.sku) + (f.ya ? ' <span class="tag" style="background:#fce8e6;color:#d93025">ya existe</span>' : '') + '</td><td class="mono">' + esc(f.desc) + '</td></tr>'; }).join('') + '</tbody></table>';
+  if (a.filas.length) h += '<table style="margin-top:12px"><thead><tr><th>SKU que se va a crear</th><th>Descripción etiqueta</th><th>Categoría</th></tr></thead><tbody>' + a.filas.map(function(f){ return '<tr class="prev"><td class="mono">' + esc(f.sku) + (f.ya ? ' <span class="tag" style="background:#fce8e6;color:#d93025">ya existe</span>' : '') + '</td><td class="mono">' + esc(f.desc) + '</td><td>' + esc(a.categoria || '—') + '</td></tr>'; }).join('') + '</tbody></table>';
   var hayDatos = $('fCodigo').value || $('fTemp').value || $('fTalles').value || $('fTitulo').value;
   if (hayDatos && a.errores.length) h += '<div class="msg err">' + a.errores.map(esc).join('<br>') + '</div>';
   if (a.avisos.length) h += '<div class="msg av">' + a.avisos.map(esc).join('<br>') + '</div>';
   $('preview').innerHTML = h;
 }
-['fCodigo','fTemp','fColor','fTalles','fMarca','fRubro','fTitulo'].forEach(function(id){ $(id).addEventListener('input', preview); $(id).addEventListener('change', preview); });
+['fCodigo','fTemp','fColor','fTalles','fMarca','fRubro','fCat','fTitulo'].forEach(function(id){ $(id).addEventListener('input', preview); $(id).addEventListener('change', preview); });
 
 function limpiar(){
   ['fCodigo','fTemp','fTalles','fCosto','fPrecio','fTitulo','fObs'].forEach(function(id){ $(id).value = ''; });
-  $('fColor').value = ''; $('fMarca').value = '';
+  $('fColor').value = ''; $('fMarca').value = ''; $('fCat').value = '';
   editando = null; $('tituloForm').textContent = 'Nuevo artículo'; $('btnGuardar').textContent = 'Agregar a pendientes'; $('btnCancelarEd').classList.add('hide');
   preview();
 }
@@ -300,7 +339,7 @@ $('btnCancelarEd').addEventListener('click', function(){ limpiar(); });
 $('btnGuardar').addEventListener('click', function(){
   var a = armar();
   if (a.errores.length){ preview(); $('resGuardar').innerHTML = '<div class="msg err">Corregí lo marcado antes de guardar.</div>'; return; }
-  var filas = a.filas.map(function(f){ return { codigo_proveedor: a.cp, temporada: a.temp, color: a.color, talle: f.talle, marca: a.marca, rubro: a.rubro, costo: num($('fCosto').value), precio: num($('fPrecio').value), titulo: a.titulo, observaciones: $('fObs').value.trim() }; });
+  var filas = a.filas.map(function(f){ return { codigo_proveedor: a.cp, temporada: a.temp, color: a.color, talle: f.talle, marca: a.marca, rubro: a.rubro, categoria: a.categoria, costo: num($('fCosto').value), precio: num($('fPrecio').value), titulo: a.titulo, observaciones: $('fObs').value.trim() }; });
   var b = $('btnGuardar'); b.disabled = true;
   var paso = editando ? api({ accion:'borrar', ids:[editando.id] }) : Promise.resolve({ ok:true });
   paso.then(function(){ return api({ accion:'guardar', filas: filas }); }).then(function(j){
@@ -308,7 +347,7 @@ $('btnGuardar').addEventListener('click', function(){
     if (j.guardadas && j.guardadas.length) h += '<div class="msg ok">' + (editando ? 'Modificado: ' : 'Agregados a pendientes: ') + j.guardadas.map(esc).join(', ') + '</div>';
     if (j.rechazadas && j.rechazadas.length) h += '<div class="msg err">' + j.rechazadas.map(function(r){ return esc(r.sku || '') + ': ' + esc(r.motivo); }).join('<br>') + '</div>';
     $('resGuardar').innerHTML = h;
-    if (j.guardadas && j.guardadas.length){ var guardo = { temp: $('fTemp').value, marca: $('fMarca').value, rubro: $('fRubro').value }; limpiar(); $('fTemp').value = guardo.temp; $('fMarca').value = guardo.marca; $('fRubro').value = guardo.rubro; }
+    if (j.guardadas && j.guardadas.length){ var guardo = { temp: $('fTemp').value, marca: $('fMarca').value, rubro: $('fRubro').value, cat: $('fCat').value }; limpiar(); $('fTemp').value = guardo.temp; $('fMarca').value = guardo.marca; $('fRubro').value = guardo.rubro; $('fCat').value = guardo.cat; }
     return cargar();
   }).catch(function(e){ if (e.message !== 'sin sesión') $('resGuardar').innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; })
     .then(function(){ b.disabled = false; });
@@ -319,9 +358,11 @@ function pintarTodo(){ pintarPend(); pintarHist(); pintarCatalogos(); preview();
 function pintarPend(){
   var p = D.articulos.filter(function(a){ return a.estado !== 'CARGADO'; }).sort(function(a,b){ return String(a.sku).localeCompare(String(b.sku)); });
   $('tbPend').innerHTML = p.length ? p.map(function(a){
-    return '<tr><td class="mono">' + esc(a.sku) + '</td><td class="mono">' + esc(a.descripcion_etiqueta) + '</td><td>' + esc(a.titulo) + '</td><td>' + esc(a.marca) + '</td><td class="der">' + money(a.costo) + '</td><td class="der">' + money(a.precio) + '</td><td>' + esc(a.usuario || '') + '</td><td style="white-space:nowrap"><button class="sec" data-ed="' + a.id + '">Editar</button> <button class="dan" data-bo="' + a.id + '">Borrar</button></td></tr>';
-  }).join('') : '<tr><td colspan="8" class="sub" style="padding:14px">No hay artículos pendientes.</td></tr>';
-  $('pendInfo').textContent = p.length + ' variante(s) pendiente(s)';
+    var cat = a.categoria ? esc(a.categoria) : '<span class="tag t-p">sin categoría</span>';
+    return '<tr><td class="mono">' + esc(a.sku) + '</td><td class="mono">' + esc(a.descripcion_etiqueta) + '</td><td>' + esc(a.titulo) + '</td><td>' + cat + '</td><td>' + esc(a.marca) + '</td><td class="der">' + money(a.costo) + '</td><td class="der">' + money(a.precio) + '</td><td>' + esc(a.usuario || '') + '</td><td style="white-space:nowrap"><button class="sec" data-ed="' + a.id + '">Editar</button> <button class="dan" data-bo="' + a.id + '">Borrar</button></td></tr>';
+  }).join('') : '<tr><td colspan="9" class="sub" style="padding:14px">No hay artículos pendientes.</td></tr>';
+  var sinCat = p.filter(function(a){ return !a.categoria; }).length;
+  $('pendInfo').textContent = p.length + ' variante(s) pendiente(s)' + (sinCat ? ' · ' + sinCat + ' sin categoría (editalas antes de procesar)' : '');
   $('btnProcesar').disabled = !p.length;
 }
 $('tbPend').addEventListener('click', function(ev){
@@ -334,14 +375,16 @@ $('tbPend').addEventListener('click', function(ev){
     var e = D.articulos.filter(function(x){ return String(x.id) === id; })[0]; if (!e) return;
     editando = e;
     $('fCodigo').value = e.codigo_proveedor; $('fTemp').value = e.temporada; $('fColor').value = e.color; $('fTalles').value = e.talle;
-    $('fMarca').value = e.marca; $('fRubro').value = e.rubro; $('fCosto').value = e.costo || ''; $('fPrecio').value = e.precio || ''; $('fTitulo').value = e.titulo || ''; $('fObs').value = e.observaciones || '';
+    $('fMarca').value = e.marca; $('fRubro').value = e.rubro; $('fCat').value = e.categoria || ''; $('fCosto').value = e.costo || ''; $('fPrecio').value = e.precio || ''; $('fTitulo').value = e.titulo || ''; $('fObs').value = e.observaciones || '';
     $('tituloForm').textContent = 'Editando ' + e.sku; $('btnGuardar').textContent = 'Guardar cambios'; $('btnCancelarEd').classList.remove('hide');
     preview(); window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 });
 $('btnProcesar').addEventListener('click', function(){
-  var n = D.articulos.filter(function(a){ return a.estado !== 'CARGADO'; }).length;
-  if (!confirm('Se van a dar de alta ' + n + ' variante(s) en EcommApp. Se abre la pantalla del resultado, con la compra y las etiquetas. ¿Seguimos?')) return;
+  var p = D.articulos.filter(function(a){ return a.estado !== 'CARGADO'; });
+  var sinCat = p.filter(function(a){ return !a.categoria; }).length;
+  if (sinCat && !confirm('Hay ' + sinCat + ' variante(s) sin categoría: van a quedar sin categoría en EcommApp. ¿Seguimos igual?')) return;
+  if (!confirm('Se van a dar de alta ' + p.length + ' variante(s) en EcommApp. Se abre la pantalla del resultado, con la compra y las etiquetas. ¿Seguimos?')) return;
   window.open(ALTA + '?fuente=panel', '_blank');
   estado('Procesando en otra pestaña. Cuando termine, apretá ⟳ Recargar para ver los pendientes actualizados.', 'av');
 });
@@ -353,31 +396,65 @@ function pintarHist(){
   var q = U($('buscaHist').value), lista = D.articulos.slice().sort(function(a,b){ return (b.id||0) - (a.id||0); });
   var car = lista.filter(function(a){ return a.estado === 'CARGADO'; }).length;
   $('kpisHist').innerHTML = '<div><b>' + lista.length.toLocaleString('es-AR') + '</b><span>artículos</span></div><div><b>' + car.toLocaleString('es-AR') + '</b><span>cargados en EcommApp</span></div><div><b>' + (lista.length - car) + '</b><span>pendientes</span></div>';
-  if (q) lista = lista.filter(function(a){ return U([a.sku, a.titulo, a.marca, a.temporada, a.gtin, a.descripcion_etiqueta].join(' ')).indexOf(q) >= 0; });
+  if (q) lista = lista.filter(function(a){ return U([a.sku, a.titulo, a.marca, a.temporada, a.gtin, a.descripcion_etiqueta, a.categoria].join(' ')).indexOf(q) >= 0; });
   var tot = lista.length; lista = lista.slice(0, 400);
   $('infoHist').textContent = tot > 400 ? 'Mostrando 400 de ' + tot + ': afiná la búsqueda.' : tot + ' resultado(s).';
   $('tbHist').innerHTML = lista.map(function(a){
-    return '<tr><td class="mono">' + esc(a.sku) + '</td><td>' + esc(a.titulo) + '</td><td>' + esc(a.marca) + '</td><td class="mono">' + esc(a.gtin || '—') + '</td><td class="mono">' + esc(a.codigo_etiqueta || '—') + '</td><td class="mono">' + esc(a.descripcion_etiqueta) + '</td><td class="der">' + money(a.costo) + '</td><td class="der">' + money(a.precio) + '</td><td><span class="tag ' + (a.estado === 'CARGADO' ? 't-c' : 't-p') + '">' + esc(a.estado) + '</span></td><td class="sub" style="margin:0">' + esc(a.origen || '') + '</td></tr>';
+    return '<tr><td class="mono">' + esc(a.sku) + '</td><td>' + esc(a.titulo) + '</td><td>' + esc(a.categoria || '—') + '</td><td>' + esc(a.marca) + '</td><td class="mono">' + esc(a.gtin || '—') + '</td><td class="mono">' + esc(a.codigo_etiqueta || '—') + '</td><td class="mono">' + esc(a.descripcion_etiqueta) + '</td><td class="der">' + money(a.costo) + '</td><td class="der">' + money(a.precio) + '</td><td><span class="tag ' + (a.estado === 'CARGADO' ? 't-c' : 't-p') + '">' + esc(a.estado) + '</span></td><td class="sub" style="margin:0">' + esc(a.origen || '') + '</td></tr>';
   }).join('');
 }
 function cuenta(campo){ var c = {}; D.articulos.forEach(function(a){ var k = U(a[campo]); c[k] = (c[k]||0) + 1; }); return c; }
 function pintarCatalogos(){
-  var cm = cuenta('marca'), cc = cuenta('color'), cr = cuenta('rubro');
+  var cm = cuenta('marca'), cc = cuenta('color'), cr = cuenta('rubro'), ck = cuenta('categoria');
   $('tbMarcas').innerHTML = D.marcas.map(function(m){ return '<tr><td>' + esc(m.nombre) + '</td><td class="mono">' + esc(m.codigo) + '</td><td class="der">' + (cm[U(m.nombre)]||0) + '</td></tr>'; }).join('');
   $('tbColores').innerHTML = D.colores.map(function(c){ return '<tr><td class="mono">' + esc(c.color_sistema) + '</td><td class="mono">' + esc(c.color_sku) + '</td><td>' + esc(c.detalle) + '</td><td class="der">' + (cc[U(c.color_sistema)]||0) + '</td></tr>'; }).join('');
   $('tbRubros').innerHTML = D.rubros.map(function(r){ return '<tr><td>' + esc(r.nombre) + '</td><td class="mono">' + esc(r.codigo) + '</td><td class="der">' + (cr[U(r.nombre)]||0) + '</td></tr>'; }).join('');
+  $('tbCats').innerHTML = D.categorias.map(function(c){ return '<tr><td>' + esc(c.nombre) + '</td><td class="der mono">' + esc(c.id_ecommapp || '') + '</td><td class="der">' + (ck[U(c.nombre)]||0) + '</td></tr>'; }).join('') || '<tr><td colspan="3" class="sub" style="padding:14px">No hay categorías.</td></tr>';
+  var cp = {}; D.proveedor_marca.forEach(function(x){ var k = U(x.marca); if (k) cp[k] = (cp[k]||0) + 1; });
+  $('tbMCom').innerHTML = D.marcas_comerciales.map(function(m){ return '<tr><td>' + esc(m.nombre) + '</td><td class="der mono">' + esc(m.id_ecommapp || '') + '</td><td class="der">' + (cp[U(m.nombre)]||0) + '</td></tr>'; }).join('') || '<tr><td colspan="3" class="sub" style="padding:14px">No hay marcas comerciales.</td></tr>';
+  $('tbProvMarca').innerHTML = D.proveedor_marca.map(function(x){
+    return '<tr data-pid="' + esc(x.proveedor_id) + '" data-prov="' + esc(x.proveedor) + '"><td>' + esc(x.proveedor) + '</td><td class="der mono">' + esc(x.proveedor_id) + '</td><td><select class="pmSel">' + opcionesMarcaCom(x.marca) + '</select></td><td><button class="sec" data-pm="1">Guardar</button>' + (x.marca ? '' : ' <span class="tag t-p">sin marca</span>') + '</td></tr>';
+  }).join('') || '<tr><td colspan="4" class="sub" style="padding:14px">Todavía no hay proveedores: agregá uno abajo.</td></tr>';
 }
 function agregarCatalogo(tipo, fila, res, limpiarIds){
+  var r = $(res); r.innerHTML = '<div class="msg av">Guardando…</div>';
   api({ accion:'catalogo', tipo: tipo, filas:[fila] }).then(function(j){
     var h = '';
-    if (j.agregadas) { h = '<div class="msg ok">Agregado.</div>'; limpiarIds.forEach(function(id){ $(id).value = ''; }); }
-    if (j.rechazadas && j.rechazadas.length) h += '<div class="msg err">' + j.rechazadas.map(function(r){ return esc(r.motivo); }).join('<br>') + '</div>';
-    $(res).innerHTML = h; return cargar();
-  });
+    if (j.agregadas || j.actualizadas) { h = '<div class="msg ok">' + (j.actualizadas ? 'Actualizado.' : 'Agregado.') + '</div>'; (limpiarIds||[]).forEach(function(id){ $(id).value = ''; }); }
+    if (j.rechazadas && j.rechazadas.length) h += '<div class="msg err">' + j.rechazadas.map(function(x){ return esc(x.motivo); }).join('<br>') + '</div>';
+    if (j.error) h += '<div class="msg err">' + esc(j.error) + '</div>';
+    r.innerHTML = h; return cargar();
+  }).catch(function(e){ if (e.message !== 'sin sesión') r.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; });
 }
 $('btnMarca').addEventListener('click', function(){ agregarCatalogo('marca', { nombre: $('mNombre').value, codigo: $('mCodigo').value }, 'resMarca', ['mNombre','mCodigo']); });
 $('btnColor').addEventListener('click', function(){ agregarCatalogo('color', { color_sistema: $('cSis').value, color_sku: $('cSku').value || $('cSis').value, detalle: $('cDet').value }, 'resColor', ['cSis','cSku','cDet']); });
 $('btnRubro').addEventListener('click', function(){ agregarCatalogo('rubro', { nombre: $('rNombre').value, codigo: $('rCodigo').value }, 'resRubro', ['rNombre','rCodigo']); });
+$('btnCat').addEventListener('click', function(){ agregarCatalogo('categoria', { nombre: $('catNombre').value }, 'resCat', ['catNombre']); });
+$('btnMCom').addEventListener('click', function(){ agregarCatalogo('marca_comercial', { nombre: $('mcNombre').value }, 'resMCom', ['mcNombre']); });
+
+// ---- proveedor -> marca ----
+$('tbProvMarca').addEventListener('click', function(ev){
+  var t = ev.target; if (!t.getAttribute('data-pm')) return;
+  var tr = t.closest('tr'); if (!tr) return;
+  agregarCatalogo('proveedor_marca', { proveedor_id: Number(tr.dataset.pid), proveedor: tr.dataset.prov, marca: tr.querySelector('.pmSel').value }, 'resProvMarca', []);
+});
+var PROV = {}, provTimer = null;
+$('pmProv').addEventListener('input', function(){
+  var q = $('pmProv').value.trim();
+  clearTimeout(provTimer);
+  if (q.length < 2 || PROV[q]) return;
+  provTimer = setTimeout(function(){
+    api({ accion:'proveedores', q: q }).then(function(j){
+      var dl = $('pmLista'); dl.innerHTML = '';
+      (j.proveedores || []).forEach(function(p){ var et = p.nombre + ' [' + p.id + ']'; PROV[et] = p; var o = document.createElement('option'); o.value = et; dl.appendChild(o); });
+    }).catch(function(){});
+  }, 250);
+});
+$('btnProvMarca').addEventListener('click', function(){
+  var p = PROV[$('pmProv').value.trim()];
+  if (!p){ $('resProvMarcaAlta').innerHTML = '<div class="msg err">Elegí el proveedor de la lista (escribí parte del nombre y esperá las opciones).</div>'; return; }
+  agregarCatalogo('proveedor_marca', { proveedor_id: p.id, proveedor: p.nombre, marca: $('pmMarca').value }, 'resProvMarcaAlta', ['pmProv']);
+});
 
 sesion = leerSesion();
 if (sesion){ guardarSesion(sesion); cargar(); } else pedirIngreso();
