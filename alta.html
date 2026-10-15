@@ -99,6 +99,8 @@ kbd{font:inherit;font-size:11px;background:#eee;border:1px solid #ccc;border-rad
 </header>
 <nav id="tabs">
   <button data-t="alta" class="on">Alta</button>
+  <button data-t="sinc">Alta sin compra</button>
+  <button data-t="etq">Etiquetas</button>
   <button data-t="hist">Historial</button>
   <button data-t="cats">Categorías</button>
   <button data-t="mcom">Marca comercial</button>
@@ -113,8 +115,10 @@ kbd{font:inherit;font-size:11px;background:#eee;border:1px solid #ccc;border-rad
 
 <!-- ===== ALTA ===== -->
 <section id="v-alta">
+<div id="bloqueCarga">
+  <div class="msg av hide" id="avisoSinCompra" style="margin-top:14px"><b>Alta sin compra.</b> Lo que cargues acá se da de alta en EcommApp <b>sin cargar ninguna compra</b>: las variantes quedan con stock 0 y sin proveedor. Al procesar se abre la pantalla para bajar el Excel de etiquetas con el código de barras de cada variante.</div>
   <div class="card">
-    <h2>Carga rápida</h2>
+    <h2>Carga rápida <span class="tag t-p hide tagSC">SIN COMPRA</span></h2>
     <p class="sub">Igual que una fila de la planilla, pero en <b>Talles</b> marcás uno o varios. "Pasar a la planilla" crea una fila por cada talle marcado, con los mismos datos. Temporada, marca, rubro y categoría quedan elegidos para el próximo artículo.</p>
     <div class="grid">
       <div><label>Código proveedor</label><input id="qCod" placeholder="Ej. 7375" autocomplete="off"></div>
@@ -135,7 +139,7 @@ kbd{font:inherit;font-size:11px;background:#eee;border:1px solid #ccc;border-rad
   </div>
 
   <div class="card">
-    <h2>Planilla de alta</h2>
+    <h2>Planilla de alta <span class="tag t-p hide tagSC">SIN COMPRA</span></h2>
     <p class="sub">Una fila por artículo, como en el Excel. En <b>Talles</b> podés poner uno solo (36), un rango (35-40) o varios (36,37,39): se crea una variante por talle. Las filas nuevas copian temporada, marca, rubro y categoría de la fila de arriba. <kbd>Enter</kbd> baja a la fila siguiente, <kbd>Ctrl</kbd>+<kbd>D</kbd> copia la celda de arriba y podés pegar varias filas desde Excel (columnas en este mismo orden). Lo que escribís queda guardado en esta compu hasta que lo agregues a pendientes.</p>
     <div class="gwrap">
       <table class="grilla" id="grilla">
@@ -155,6 +159,7 @@ kbd{font:inherit;font-size:11px;background:#eee;border:1px solid #ccc;border-rad
     </div>
     <div id="resGuardar"></div>
   </div>
+</div>
 
   <div class="card">
     <h2>Pendientes de dar de alta</h2>
@@ -165,6 +170,41 @@ kbd{font:inherit;font-size:11px;background:#eee;border:1px solid #ccc;border-rad
       <button class="sec" id="btnVista">Vista previa (no carga nada)</button>
       <span class="sub" style="margin:0" id="pendInfo"></span>
     </div>
+  </div>
+</section>
+
+<!-- ===== ALTA SIN COMPRA ===== -->
+<section id="v-sinc" class="hide">
+  <div id="slotSinc"></div>
+  <div class="card">
+    <h2>Pendientes de alta sin compra</h2>
+    <p class="sub">Se cargan en EcommApp al apretar <b>Dar de alta y generar etiquetas</b>. No se abre la compra: se abre la pantalla para poner cuántas etiquetas querés de cada variante y bajar el Excel. El código de barras se asigna en ese momento.</p>
+    <div class="scroll"><table><thead><tr><th>SKU</th><th>Descripción etiqueta</th><th>Título</th><th>Categoría</th><th>Marca (SKU)</th><th class="der">Costo</th><th class="der">Precio</th><th>Responsable</th><th></th></tr></thead><tbody id="tbPendSC"></tbody></table></div>
+    <div class="barra">
+      <button class="okb" id="btnProcesarSC">▶ Dar de alta y generar etiquetas</button>
+      <button class="sec" id="btnVistaSC">Vista previa (no carga nada)</button>
+      <span class="sub" style="margin:0" id="pendInfoSC"></span>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ETIQUETAS ===== -->
+<section id="v-etq" class="hide">
+  <div class="card">
+    <h2>Etiquetas de artículos de EcommApp</h2>
+    <p class="sub">Buscá por modelo o SKU (por ejemplo <b>helena</b>) y tocá las variantes para sumarlas a la lista, o pegá una lista de SKU. Después poné cuántas etiquetas querés de cada una y bajá el Excel para la planilla de etiquetas. Las variantes sin código de barras reciben uno nuevo de la serie propia y queda guardado en EcommApp.</p>
+    <div class="barra"><input id="eqBusca" placeholder="Modelo o SKU" style="max-width:360px"><button class="pri" id="btnEqBusca">Buscar en EcommApp</button><label style="margin:0;display:flex;gap:6px;align-items:center"><input type="checkbox" id="eqStock" style="width:auto"> Etiquetas = stock actual</label></div>
+    <div id="eqRes"></div>
+    <details style="margin-top:12px"><summary class="sub" style="cursor:pointer;margin:0">Pegar una lista de SKU</summary>
+      <textarea id="eqPegar" rows="5" placeholder="Un SKU por línea. Opcional: la cantidad después de un espacio o tab (HELENA-V27-AZ-37-CAL-SA 2)" style="margin-top:8px"></textarea>
+      <div class="barra"><button class="sec" id="btnEqPegar">Agregar a la lista</button></div>
+    </details>
+  </div>
+  <div class="card">
+    <h2>Lista para imprimir</h2>
+    <div class="scroll"><table><thead><tr><th>SKU</th><th>Detalle</th><th class="der">Stock</th><th style="width:110px">Etiquetas</th><th></th></tr></thead><tbody id="eqLista"></tbody></table></div>
+    <div class="barra"><button class="okb" id="btnEqExcel">Descargar Excel de etiquetas</button><button class="sec" id="btnEqVaciar">Vaciar lista</button><span class="sub" style="margin:0" id="eqInfo"></span></div>
+    <div id="eqResultado"></div>
   </div>
 </section>
 
@@ -249,11 +289,14 @@ kbd{font:inherit;font-size:11px;background:#eee;border:1px solid #ccc;border-rad
 var API = 'https://n8n.mahra-ai.online/webhook/alta-panel-api';
 var LOGIN = 'https://n8n.mahra-ai.online/webhook/panel-acceso';
 var ALTA = 'https://n8n.mahra-ai.online/webhook/alta-articulos-ecommapp';
-var TABS = ['alta','hist','cats','mcom','marcas','colores','rubros','sug','instr'];
+var TABS = ['alta','sinc','etq','hist','cats','mcom','marcas','colores','rubros','sug','instr'];
 var RESPONSABLES = ['Vanina','Ana Paula','Emilia','Yamila','Ludmila','Pablo'];
 var COLS = ['cod','temp','color','talles','marca','rubro','cat','costo','precio','titulo','obs'];
 var HEREDA = { temp:1, marca:1, rubro:1, cat:1 };
 var sesion = null, D = null;
+var MODO = 'compra'; // 'compra' (pestaña Alta) o 'sin_compra' (pestaña Alta sin compra): comparten la planilla
+var CAMBIOS_API = 'https://n8n.mahra-ai.online/webhook/cambios-panel-api';
+var ETIQUETAS = 'https://n8n.mahra-ai.online/webhook/ecommapp-etiquetas';
 // ===== MODO DEMOSTRACION (?demo=1): datos de ejemplo, no toca el servidor =====
 var DEMO = /[?&]demo=1/.test(location.search);
 function datosDemo(){
@@ -351,8 +394,23 @@ Array.prototype.forEach.call(document.querySelectorAll('#tabs button'), function
   b.addEventListener('click', function(){
     Array.prototype.forEach.call(document.querySelectorAll('#tabs button'), function(x){ x.classList.toggle('on', x === b); });
     TABS.forEach(function(t){ $('v-' + t).classList.toggle('hide', t !== b.dataset.t); });
+    if (b.dataset.t === 'alta' || b.dataset.t === 'sinc') ponerModo(b.dataset.t === 'sinc' ? 'sin_compra' : 'compra');
+    if (b.dataset.t === 'etq') pintarEtq();
   });
 });
+function irTab(t){ var b = document.querySelector('#tabs button[data-t="' + t + '"]'); if (b) b.click(); }
+function ponerModo(m){
+  if (m === MODO) return;
+  guardarGrillaLocal();
+  MODO = m;
+  var bloque = $('bloqueCarga');
+  if (m === 'sin_compra') $('slotSinc').appendChild(bloque); else $('v-alta').insertBefore(bloque, $('v-alta').firstChild);
+  $('avisoSinCompra').classList.toggle('hide', m !== 'sin_compra');
+  Array.prototype.forEach.call(document.querySelectorAll('.tagSC'), function(x){ x.classList.toggle('hide', m !== 'sin_compra'); });
+  $('btnGuardarTodo').textContent = m === 'sin_compra' ? 'Agregar todo a pendientes sin compra' : 'Agregar todo a pendientes';
+  $('resGuardar').innerHTML = ''; $('resRapida').innerHTML = '';
+  if (D) restaurarGrilla();
+}
 
 function opcionesMarcaCom(sel){ return '<option value="">Sin marca</option>' + D.marcas_comerciales.map(function(m){ return '<option value="' + esc(m.nombre) + '"' + (U(m.nombre) === U(sel) ? ' selected' : '') + '>' + esc(m.nombre) + '</option>'; }).join(''); }
 var SELECTS = { color: 1, marca: 1, rubro: 1, cat: 1 };
@@ -462,12 +520,13 @@ function validarGrilla(){
   $('gInfo').textContent = conDatos.length ? (conDatos.length + ' fila(s) con datos, ' + vars + ' variante(s) listas' + (mal ? ', ' + mal + ' fila(s) con errores' : '')) : '';
   return res;
 }
+function claveGrilla(){ return (DEMO ? 'mahra_alta_grilla_demo' : 'mahra_alta_grilla') + (MODO === 'sin_compra' ? '_sin_compra' : ''); }
 function guardarGrillaLocal(){
-  try { localStorage.setItem(DEMO ? 'mahra_alta_grilla_demo' : 'mahra_alta_grilla', JSON.stringify(Array.prototype.map.call(gBody.children, leerFila).filter(function(o){ return !filaVacia(o); }))); } catch(e){}
+  try { localStorage.setItem(claveGrilla(), JSON.stringify(Array.prototype.map.call(gBody.children, leerFila).filter(function(o){ return !filaVacia(o); }))); } catch(e){}
 }
 function restaurarGrilla(){
   var guardadas = [];
-  try { guardadas = JSON.parse(localStorage.getItem(DEMO ? 'mahra_alta_grilla_demo' : 'mahra_alta_grilla') || '[]') || []; } catch(e){}
+  try { guardadas = JSON.parse(localStorage.getItem(claveGrilla()) || '[]') || []; } catch(e){}
   gBody.innerHTML = '';
   guardadas.forEach(function(o){ filaNueva(o, false); });
   while (gBody.children.length < Math.max(5, guardadas.length + 2)) filaNueva(null, true);
@@ -570,7 +629,7 @@ $('btnGuardarTodo').addEventListener('click', function(){
   var filas = [], borrar = [];
   listas.forEach(function(x){
     var a = x.a; if (a.id) borrar.push(a.id);
-    a.filas.forEach(function(f){ filas.push({ codigo_proveedor: a.cp, temporada: a.temp, color: a.color, talle: f.talle, marca: a.marca, rubro: a.rubro, categoria: a.categoria, costo: a.costo, precio: a.precio, titulo: a.titulo, observaciones: a.obs, responsable: responsable }); });
+    a.filas.forEach(function(f){ filas.push({ codigo_proveedor: a.cp, temporada: a.temp, color: a.color, talle: f.talle, marca: a.marca, rubro: a.rubro, categoria: a.categoria, costo: a.costo, precio: a.precio, titulo: a.titulo, observaciones: a.obs, responsable: responsable, modo: MODO === 'sin_compra' ? 'SIN_COMPRA' : '' }); });
   });
   var b = $('btnGuardarTodo'); b.disabled = true; b.textContent = 'Guardando…';
   var paso = borrar.length ? api({ accion:'borrar', ids: borrar }) : Promise.resolve({ ok:true });
@@ -592,22 +651,24 @@ $('btnGuardarTodo').addEventListener('click', function(){
     numerar(); guardarGrillaLocal();
     return cargar();
   }).catch(function(e){ if (e.message !== 'sin sesión') $('resGuardar').innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; })
-    .then(function(){ b.disabled = false; b.textContent = 'Agregar todo a pendientes'; validarGrilla(); });
+    .then(function(){ b.disabled = false; b.textContent = MODO === 'sin_compra' ? 'Agregar todo a pendientes sin compra' : 'Agregar todo a pendientes'; validarGrilla(); });
 });
 
 // ---- tablas ----
 function pintarTodo(){ pintarPend(); pintarHist(); pintarCatalogos(); pintarSugerencias(); validarGrilla(); }
-function pintarPend(){
-  var p = D.articulos.filter(function(a){ return a.estado !== 'CARGADO'; }).sort(function(a,b){ return String(a.sku).localeCompare(String(b.sku)); });
-  $('tbPend').innerHTML = p.length ? p.map(function(a){
+function esSC(a){ return String(a.modo || '').toUpperCase() === 'SIN_COMPRA'; }
+function pintarPend(){ pintarPendDe(false, 'tbPend', 'pendInfo', 'btnProcesar'); pintarPendDe(true, 'tbPendSC', 'pendInfoSC', 'btnProcesarSC'); }
+function pintarPendDe(sc, tb, info, boton){
+  var p = D.articulos.filter(function(a){ return a.estado !== 'CARGADO' && esSC(a) === sc; }).sort(function(a,b){ return String(a.sku).localeCompare(String(b.sku)); });
+  $(tb).innerHTML = p.length ? p.map(function(a){
     var cat = a.categoria ? esc(a.categoria) : '<span class="tag t-p">sin categoría</span>';
     return '<tr><td class="mono">' + esc(a.sku) + '</td><td class="mono">' + esc(a.descripcion_etiqueta) + '</td><td>' + esc(a.titulo) + '</td><td>' + cat + '</td><td>' + esc(a.marca) + '</td><td class="der">' + money(a.costo) + '</td><td class="der">' + money(a.precio) + '</td><td>' + esc(a.responsable || a.usuario || '') + '</td><td style="white-space:nowrap"><button class="sec" data-ed="' + a.id + '">Editar</button> <button class="dan" data-bo="' + a.id + '">Borrar</button></td></tr>';
   }).join('') : '<tr><td colspan="9" class="sub" style="padding:14px">No hay artículos pendientes.</td></tr>';
   var sinCat = p.filter(function(a){ return !a.categoria; }).length;
-  $('pendInfo').textContent = p.length + ' variante(s) pendiente(s)' + (sinCat ? ' · ' + sinCat + ' sin categoría (editalas antes de procesar)' : '');
-  $('btnProcesar').disabled = !p.length;
+  $(info).textContent = p.length + ' variante(s) pendiente(s)' + (sinCat ? ' · ' + sinCat + ' sin categoría (editalas antes de procesar)' : '');
+  $(boton).disabled = !p.length;
 }
-$('tbPend').addEventListener('click', function(ev){
+function clickPend(ev){
   var t = ev.target, id;
   if ((id = t.getAttribute('data-bo'))){
     var a = D.articulos.filter(function(x){ return String(x.id) === id; })[0];
@@ -615,14 +676,26 @@ $('tbPend').addEventListener('click', function(ev){
     api({ accion:'borrar', ids:[a.id] }).then(function(j){ if (j.rechazadas && j.rechazadas.length) alert(j.rechazadas.map(function(r){ return r.motivo; }).join('\n')); return cargar(); });
   } else if ((id = t.getAttribute('data-ed'))){
     var e = D.articulos.filter(function(x){ return String(x.id) === id; })[0]; if (!e) return;
+    irTab(esSC(e) ? 'sinc' : 'alta');
     if (gBody.querySelector('tr[data-id="' + e.id + '"]')){ alert(e.sku + ' ya está en la planilla para editar.'); return; }
     var tr = filaNueva({ id: e.id, cod: e.codigo_proveedor, temp: e.temporada, color: e.color, talles: e.talle, marca: e.marca, rubro: e.rubro, cat: e.categoria || '', costo: e.costo || '', precio: e.precio || '', titulo: e.titulo || '', obs: e.observaciones || '' }, false, true);
     validarGrilla(); guardarGrillaLocal();
     window.scrollTo({ top: 0, behavior: 'smooth' }); var f = tr.querySelector('.g-cat'); if (f) f.focus();
   }
+}
+$('tbPend').addEventListener('click', clickPend);
+$('tbPendSC').addEventListener('click', clickPend);
+$('btnProcesarSC').addEventListener('click', function(){
+  var p = D.articulos.filter(function(a){ return a.estado !== 'CARGADO' && esSC(a); });
+  var sinCat = p.filter(function(a){ return !a.categoria; }).length;
+  if (sinCat && !confirm('Hay ' + sinCat + ' variante(s) sin categoría. ¿Seguimos igual?')) return;
+  if (!confirm('Se van a dar de alta ' + p.length + ' variante(s) en EcommApp SIN compra: quedan con stock 0 y sin proveedor. Se abre la pantalla para bajar el Excel de etiquetas. ¿Seguimos?')) return;
+  window.open(ALTA + '?fuente=panel&modo=sin_compra', '_blank');
+  estado('Procesando en otra pestaña. Cuando termine, apretá ⟳ Recargar para ver los pendientes actualizados.', 'av');
 });
+$('btnVistaSC').addEventListener('click', function(){ window.open(ALTA + '?fuente=panel&modo=sin_compra&vista=1', '_blank'); });
 $('btnProcesar').addEventListener('click', function(){
-  var p = D.articulos.filter(function(a){ return a.estado !== 'CARGADO'; });
+  var p = D.articulos.filter(function(a){ return a.estado !== 'CARGADO' && !esSC(a); });
   var sinCat = p.filter(function(a){ return !a.categoria; }).length;
   if (sinCat && !confirm('Hay ' + sinCat + ' variante(s) sin categoría: van a quedar sin categoría en EcommApp. ¿Seguimos igual?')) return;
   if (!confirm('Se van a dar de alta ' + p.length + ' variante(s) en EcommApp. Se abre la pantalla del resultado: cargá ahí la compra, para que queden con proveedor, marca y categoría. ¿Seguimos?')) return;
@@ -642,7 +715,7 @@ function pintarHist(){
   $('infoHist').textContent = tot > 400 ? 'Mostrando 400 de ' + tot + ': afiná la búsqueda.' : tot + ' resultado(s).';
   $('tbHist').innerHTML = lista.map(function(a){
     var acc = a.estado === 'CARGADO' ? '<button class="sec" data-re="' + a.id + '" title="Si lo borraste en EcommApp, vuelve a pendientes para darlo de alta otra vez">Volver a pendiente</button>' : '';
-    return '<tr><td class="mono">' + esc(a.sku) + '</td><td>' + esc(a.titulo) + '</td><td>' + esc(a.categoria || '—') + '</td><td>' + esc(a.marca) + '</td><td class="mono">' + esc(a.gtin || '—') + '</td><td class="mono">' + esc(a.codigo_etiqueta || '—') + '</td><td class="mono">' + esc(a.descripcion_etiqueta) + '</td><td class="der">' + money(a.costo) + '</td><td class="der">' + money(a.precio) + '</td><td><span class="tag ' + (a.estado === 'CARGADO' ? 't-c' : 't-p') + '">' + esc(a.estado) + '</span></td><td class="sub" style="margin:0">' + esc(a.origen || '') + '</td><td style="white-space:nowrap">' + acc + '</td></tr>';
+    return '<tr><td class="mono">' + esc(a.sku) + '</td><td>' + esc(a.titulo) + '</td><td>' + esc(a.categoria || '—') + '</td><td>' + esc(a.marca) + '</td><td class="mono">' + esc(a.gtin || '—') + '</td><td class="mono">' + esc(a.codigo_etiqueta || '—') + '</td><td class="mono">' + esc(a.descripcion_etiqueta) + '</td><td class="der">' + money(a.costo) + '</td><td class="der">' + money(a.precio) + '</td><td><span class="tag ' + (a.estado === 'CARGADO' ? 't-c' : 't-p') + '">' + esc(a.estado) + '</span></td><td class="sub" style="margin:0">' + esc(a.origen || '') + (esSC(a) ? ' <span class="tag t-p">sin compra</span>' : '') + '</td><td style="white-space:nowrap">' + acc + '</td></tr>';
   }).join('');
 }
 $('tbHist').addEventListener('click', function(ev){
@@ -764,6 +837,84 @@ function mdRender(md){
   return { html: out.join('\n'), fecha: fecha };
 }
 var instrCargado = false;
+
+// ===== ETIQUETAS (15/10/2026): artículos de EcommApp -> Excel de etiquetas (flujo U1Fbspqhrro83EWm) =====
+var EQ = [];
+try { EQ = JSON.parse(localStorage.getItem('mahra_etq_lista') || '[]') || []; } catch(e){ EQ = []; }
+function guardarEq(){ try { localStorage.setItem('mahra_etq_lista', JSON.stringify(EQ)); } catch(e){} }
+function sumarEq(v, cant){
+  var ya = EQ.filter(function(x){ return U(x.sku) === U(v.sku); })[0];
+  var c = cant != null ? cant : ($('eqStock').checked ? Math.max(0, Number(v.stock) || 0) : 1);
+  if (ya){ ya.cantidad = (Number(ya.cantidad) || 0) + c; if (v.detalle) ya.detalle = v.detalle; if (v.stock != null) ya.stock = v.stock; }
+  else EQ.push({ sku: String(v.sku).trim(), detalle: v.detalle || '', stock: v.stock == null ? '' : v.stock, cantidad: c });
+}
+function pintarEtq(){
+  $('eqLista').innerHTML = EQ.length ? EQ.map(function(x, i){
+    return '<tr><td class="mono">' + esc(x.sku) + '</td><td>' + esc(x.detalle) + '</td><td class="der">' + esc(x.stock) + '</td><td><input data-eq="' + i + '" value="' + esc(x.cantidad) + '" inputmode="numeric" style="width:90px"></td><td><button class="dan" data-eqx="' + i + '">Quitar</button></td></tr>';
+  }).join('') : '<tr><td colspan="5" class="sub" style="padding:14px">La lista está vacía: buscá artículos arriba.</td></tr>';
+  var tot = EQ.reduce(function(a, x){ return a + (Number(x.cantidad) || 0); }, 0);
+  $('eqInfo').textContent = EQ.length ? EQ.length + ' variante(s) · ' + tot + ' etiqueta(s)' : '';
+  $('btnEqExcel').disabled = !tot;
+}
+$('eqLista').addEventListener('change', function(ev){ var i = ev.target.getAttribute('data-eq'); if (i == null) return; EQ[Number(i)].cantidad = Math.max(0, Math.round(num(ev.target.value))); guardarEq(); pintarEtq(); });
+$('eqLista').addEventListener('click', function(ev){ var i = ev.target.getAttribute('data-eqx'); if (i == null) return; EQ.splice(Number(i), 1); guardarEq(); pintarEtq(); });
+$('btnEqVaciar').addEventListener('click', function(){ if (EQ.length && !confirm('¿Vaciar la lista de etiquetas?')) return; EQ = []; guardarEq(); pintarEtq(); $('eqResultado').innerHTML = ''; });
+var EQRES = [];
+function buscarEq(){
+  var q = $('eqBusca').value.trim(), cont = $('eqRes');
+  if (q.length < 2){ cont.innerHTML = '<div class="msg av">Escribí al menos 2 letras.</div>'; return; }
+  cont.innerHTML = '<p class="sub">Buscando en EcommApp…</p>';
+  var pedido;
+  if (DEMO) pedido = Promise.resolve({ ok: true, variantes: D.articulos.filter(function(a){ return a.estado === 'CARGADO' && U(a.sku).indexOf(U(q)) >= 0; }).map(function(a){ return { sku: a.sku, detalle: a.titulo, stock: 2 }; }) });
+  else pedido = fetch(CAMBIOS_API, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ token: sesion ? sesion.token : '', accion: 'variantes', q: q }) }).then(function(r){ return r.json(); });
+  pedido.then(function(j){
+    if (j && j.error === 'sin_sesion'){ pedirIngreso('La sesión venció: volvé a entrar.'); return; }
+    if (!j || !j.ok) throw new Error((j && j.error) || 'error');
+    EQRES = j.variantes || [];
+    if (!EQRES.length){ cont.innerHTML = '<div class="msg av">No encontré variantes con "' + esc(q) + '".</div>'; return; }
+    cont.innerHTML = '<div class="barra" style="margin:8px 0"><button class="sec" id="btnEqTodas">Agregar las ' + EQRES.length + ' a la lista</button><span class="sub" style="margin:0">o tocá una por una</span></div><div class="scroll"><table><thead><tr><th>SKU</th><th>Detalle</th><th class="der">Stock</th></tr></thead><tbody>' +
+      EQRES.map(function(v, i){ return '<tr class="clic" data-r="' + i + '" style="cursor:pointer"><td class="mono">' + esc(v.sku) + '</td><td>' + esc(v.detalle || v.producto) + '</td><td class="der">' + esc(v.stock) + '</td></tr>'; }).join('') + '</tbody></table></div>';
+    $('btnEqTodas').addEventListener('click', function(){ EQRES.forEach(function(v){ sumarEq(v); }); guardarEq(); pintarEtq(); cont.innerHTML = '<div class="msg ok">Agregadas ' + EQRES.length + ' variante(s) a la lista.</div>'; });
+    Array.prototype.forEach.call(cont.querySelectorAll('tr[data-r]'), function(tr){
+      tr.addEventListener('click', function(){ var v = EQRES[Number(tr.dataset.r)]; sumarEq(v); guardarEq(); pintarEtq(); tr.style.background = '#e6f4ea'; });
+    });
+  }).catch(function(e){ cont.innerHTML = '<div class="msg err">No se pudo buscar: ' + esc(e.message) + '</div>'; });
+}
+$('btnEqBusca').addEventListener('click', buscarEq);
+$('eqBusca').addEventListener('keydown', function(e){ if (e.key === 'Enter') buscarEq(); });
+$('btnEqPegar').addEventListener('click', function(){
+  var n = 0;
+  $('eqPegar').value.split(/\r?\n/).forEach(function(l){
+    var p = l.trim().split(/[\s;,]+/).filter(Boolean); if (!p.length) return;
+    var c = p.length > 1 ? Math.max(0, Math.round(num(p[p.length - 1]))) : 1;
+    sumarEq({ sku: U(p[0]), detalle: '', stock: null }, c || 1); n++;
+  });
+  guardarEq(); pintarEtq(); $('eqPegar').value = '';
+  $('eqResultado').innerHTML = n ? '<div class="msg ok">Agregados ' + n + ' SKU. Los que no existan en EcommApp te los avisa al bajar el Excel.</div>' : '';
+});
+$('btnEqExcel').addEventListener('click', function(){
+  var filas = EQ.filter(function(x){ return Number(x.cantidad) > 0; }).map(function(x){ return { sku: x.sku, cantidad: Number(x.cantidad) }; });
+  if (!filas.length) return;
+  if (DEMO){ $('eqResultado').innerHTML = '<div class="msg av">Modo demostración: no se genera el Excel.</div>'; return; }
+  var b = $('btnEqExcel'); b.disabled = true; b.textContent = 'Armando etiquetas…'; $('eqResultado').innerHTML = '';
+  fetch(ETIQUETAS, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ filas: filas }) })
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if (!j.base64) throw new Error(j.error || 'sin respuesta');
+      var bin = atob(j.base64), u = new Uint8Array(bin.length); for (var k = 0; k < bin.length; k++) u[k] = bin.charCodeAt(k);
+      var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([u], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      a.download = (j.nombre || 'Etiquetas.xlsx').replace('Etiquetas_compra_', 'Etiquetas_'); document.body.appendChild(a); a.click(); a.remove();
+      var h = '<div class="msg ok"><b>' + (j.filas || []).length + ' variante(s) en el Excel.</b>';
+      if ((j.asignados || []).length) h += '<br>Códigos de barras nuevos guardados en EcommApp: ' + j.asignados.map(function(x){ return esc(x.sku) + ' ' + esc(x.codigo) + (x.guardado === false ? ' (NO se guardó, revisar)' : ''); }).join(', ');
+      h += '</div>';
+      if ((j.faltan || []).length) h += '<div class="msg err">No están en EcommApp: ' + j.faltan.map(esc).join(', ') + '</div>';
+      $('eqResultado').innerHTML = h;
+    })
+    .catch(function(e){ $('eqResultado').innerHTML = '<div class="msg err">No se pudo armar el Excel: ' + esc(e.message) + '</div>'; })
+    .then(function(){ b.disabled = false; b.textContent = 'Descargar Excel de etiquetas'; });
+});
+pintarEtq();
+
 function cargarInstructivo(){
   if (instrCargado) return; instrCargado = true;
   fetch('instructivo.md?v=' + Date.now()).then(function(r){ return r.text(); }).then(function(md){
