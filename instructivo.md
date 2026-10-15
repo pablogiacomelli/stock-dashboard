@@ -1,11 +1,11 @@
 ---
 titulo: Manual del Panel de Alta de Artículos y Compras
-actualizado: 2026-10-11
+actualizado: 2026-10-15
 ---
 
 # Manual del Panel de Alta de Artículos y Compras
 
-Última modificación: 11/10/2026.
+Última modificación: 15/10/2026 (pestañas Alta sin compra y Etiquetas).
 
 El panel reemplaza la planilla CONTROL DE SKU. Se entra en https://pablogiacomelli.github.io/stock-dashboard/alta.html con el usuario y la contraseña del local (los mismos del panel de seguimiento de envíos). La sesión queda abierta 30 días en esa computadora. Para practicar sin tocar nada real, se puede abrir el panel con `?demo=1` al final de la dirección: muestra datos de ejemplo y no guarda.
 
@@ -60,7 +60,9 @@ El circuito completo es: Carga rápida → Pasar a la planilla → Agregar todo 
 
 | Pestaña | Para qué sirve | Qué se puede hacer |
 | --- | --- | --- |
-| Alta | Cargar artículos nuevos (Parte 1) | Carga rápida, planilla, pendientes, Procesar artículos, Vista previa |
+| Alta | Cargar artículos nuevos que llegan con una compra (Parte 1) | Carga rápida, planilla, pendientes, Procesar artículos, Vista previa |
+| Alta sin compra | Dar de alta artículos que no vienen con una compra (Parte 4) | La misma carga rápida y planilla, con borrador propio; pendientes sin compra; Dar de alta y generar etiquetas |
+| Etiquetas | Imprimir etiquetas de artículos que ya están en EcommApp (Parte 5) | Buscar por modelo o SKU, pegar una lista de SKU, cantidad por variante, Descargar Excel de etiquetas |
 | Historial | Ver todos los artículos del panel, cargados y pendientes | Buscar por SKU, título, marca, temporada o categoría. Botón **Volver a pendiente** en los CARGADO |
 | Categorías | Categoría del artículo en EcommApp (Zapatillas, Borcegos, Sandalias, Botas y Texanas, Balerinas, Zuecos, Carteras, Accesorios, etc.) | Agregar una categoría: se crea también en EcommApp, en Categorías y marcas |
 | Marca comercial | Marca con la que se vende cada artículo en EcommApp, y qué marca corresponde a cada proveedor | Elegir la marca de cada proveedor y Guardar; agregar un proveedor (se busca en la lista de EcommApp); agregar una marca comercial (se crea también en EcommApp) |
@@ -144,3 +146,31 @@ También se puede cargar una compra solo de artículos existentes: Procesar art�
 
 - Si cerraste la pestaña sin cargar la compra, las variantes quedaron creadas pero sin proveedor, marca ni categoría: cargala desde una nueva corrida de Procesar artículos agregando las variantes como "ya existentes".
 - Si cargaste una variante con el color o el talle equivocado, avisá antes de imprimir etiquetas y antes de cargar la compra. Si la compra ya está cargada, hay que borrarla en EcommApp junto con las variantes equivocadas y volver a hacer el circuito.
+
+## Parte 4: alta sin compra
+
+Sirve para dar de alta artículos que **no llegan con una compra**. Se crean en EcommApp igual que en el alta común, pero no se abre la pantalla de la compra: se abre la de etiquetas.
+
+1. Entrá a la pestaña **Alta sin compra**. Arriba aparece el aviso "Alta sin compra" y la marca SIN COMPRA en la carga rápida y en la planilla.
+2. Cargá los artículos igual que en la Parte 1: carga rápida o planilla, responsable y **Agregar todo a pendientes sin compra**. La planilla de esta pestaña tiene su propio borrador: lo que dejes a medias en la pestaña Alta no se mezcla.
+3. Los artículos quedan en **Pendientes de alta sin compra**, abajo en la misma pestaña. Los pendientes de la pestaña Alta no aparecen acá, y estos no aparecen allá: cada botón procesa solo lo suyo.
+4. Apretá **Dar de alta y generar etiquetas**. Se abre una pestaña nueva con el resultado y la lista de variantes creadas.
+5. Poné cuántas etiquetas querés de cada variante (o usá "Aplicar a todas") y apretá **Descargar etiquetas (Excel)**. Las variantes reciben su código de barras de la serie propia 7790001 y queda guardado en EcommApp.
+
+Importante:
+
+- Las variantes quedan con **stock 0** y **sin proveedor, marca comercial ni categoría** en EcommApp, porque eso se completa al cargar una compra. Si después llega mercadería, se carga la compra desde una corrida de Procesar artículos agregándolas como "ya existentes".
+- Si apenas creadas el Excel dice que algunas "todavía no aparecen en EcommApp", esperá un minuto y volvé a descargar: la carga en EcommApp tarda un ratito.
+
+## Parte 5: etiquetas de artículos que ya están en EcommApp
+
+Sirve para reimprimir etiquetas o imprimir las de artículos dados de alta antes.
+
+1. Entrá a la pestaña **Etiquetas**.
+2. Escribí el modelo o el SKU (por ejemplo `helena`) y apretá **Buscar en EcommApp**. Tocá cada variante para sumarla a la lista, o apretá **Agregar las … a la lista** para sumar todas.
+3. Si tildás **Etiquetas = stock actual**, cada variante entra con tantas etiquetas como stock tiene en EcommApp; si no, entra con 1.
+4. También podés **pegar una lista de SKU**, uno por línea, con la cantidad al lado si querés (`HELENA-V27-AZ-37-CAL-SA 2`).
+5. En **Lista para imprimir** corregí las cantidades, quitá lo que sobre y apretá **Descargar Excel de etiquetas**.
+6. El Excel es el mismo de la compra: SKU VARIANTE, CODIGO PARA ETIQUETAS, DESCRIPCION ETIQUETA y la cantidad. Las variantes que no tenían código de barras reciben uno de la serie propia y queda guardado en EcommApp. Si algún SKU no existe en EcommApp, el panel lo avisa en rojo.
+
+La lista queda guardada en esa computadora hasta que la vacíes con **Vaciar lista**.
