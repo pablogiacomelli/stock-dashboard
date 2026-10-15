@@ -116,7 +116,7 @@ kbd{font:inherit;font-size:11px;background:#eee;border:1px solid #ccc;border-rad
 <!-- ===== ALTA ===== -->
 <section id="v-alta">
 <div id="bloqueCarga">
-  <div class="msg av hide" id="avisoSinCompra" style="margin-top:14px"><b>Alta sin compra.</b> Lo que cargues acá se da de alta en EcommApp <b>sin cargar ninguna compra</b>: las variantes quedan con stock 0 y sin proveedor. Al procesar se abre la pantalla para bajar el Excel de etiquetas con el código de barras de cada variante.</div>
+  <div class="msg av hide" id="avisoSinCompra" style="margin-top:14px"><b>Alta sin compra.</b> Lo que cargues acá se da de alta en EcommApp <b>sin cargar ninguna compra</b>: las variantes quedan con stock 0. El proveedor sale del código de marca del SKU (NF, SA, VL…), la marca comercial del mapa de la pestaña Marca comercial y la categoría de la planilla. Al procesar se abre la pantalla para bajar el Excel de etiquetas con el código de barras de cada variante.</div>
   <div class="card">
     <h2>Carga rápida <span class="tag t-p hide tagSC">SIN COMPRA</span></h2>
     <p class="sub">Igual que una fila de la planilla, pero en <b>Talles</b> marcás uno o varios. "Pasar a la planilla" crea una fila por cada talle marcado, con los mismos datos. Temporada, marca, rubro y categoría quedan elegidos para el próximo artículo.</p>
@@ -441,8 +441,11 @@ function celda(tipo, nombre, valor){
 }
 function filaNueva(datos, heredar, arriba){
   datos = datos || {};
-  var prev = heredar ? leerFila(gBody.lastElementChild) : null;
+  // 15/10/2026: una fila vacia ya no se precarga con temporada/marca/rubro/categoria (parecia un articulo cargado);
+  // los copia de la fila de arriba recien cuando se empieza a escribir en ella (heredarFila).
+  var prev = null;
   var tr = document.createElement('tr');
+  if (heredar) tr.dataset.hereda = '1';
   if (datos.id){ tr.dataset.id = datos.id; tr.className = 'edit'; }
   var n = document.createElement('td'); n.className = 'n'; tr.appendChild(n);
   COLS.forEach(function(c){
@@ -453,6 +456,14 @@ function filaNueva(datos, heredar, arriba){
   var x = document.createElement('td'); x.innerHTML = '<button class="x" title="Quitar fila" data-x="1">×</button>'; tr.appendChild(x);
   if (arriba && gBody.firstElementChild) gBody.insertBefore(tr, gBody.firstElementChild); else gBody.appendChild(tr);
   numerar(); return tr;
+}
+function heredarFila(tr){
+  if (!tr || !tr.dataset || tr.dataset.hereda !== '1') return;
+  delete tr.dataset.hereda;
+  var p = tr.previousElementSibling, prev = null;
+  while (p){ var o = leerFila(p); if (Object.keys(HEREDA).some(function(c){ return String(o[c]||'').trim(); })){ prev = o; break; } p = p.previousElementSibling; }
+  if (!prev) return;
+  Object.keys(HEREDA).forEach(function(c){ var el = tr.querySelector('.g-' + c); if (el && !String(el.value||'').trim() && prev[c]){ el.value = SELECTS[c] ? valorParaSelect(c, prev[c]) : prev[c]; } });
 }
 function numerar(){ var i = 0; Array.prototype.forEach.call(gBody.children, function(tr){ i++; tr.firstElementChild.textContent = (tr.dataset.id ? 'edita ' : '') + i; }); }
 function leerFila(tr){
@@ -537,8 +548,8 @@ function refrescarSelectsGrilla(){
   validarGrilla();
 }
 var gTimer = null;
-gBody.addEventListener('input', function(){ clearTimeout(gTimer); gTimer = setTimeout(function(){ validarGrilla(); guardarGrillaLocal(); }, 150); });
-gBody.addEventListener('change', function(){ validarGrilla(); guardarGrillaLocal(); });
+gBody.addEventListener('input', function(ev){ heredarFila(ev.target.closest && ev.target.closest('tr')); clearTimeout(gTimer); gTimer = setTimeout(function(){ validarGrilla(); guardarGrillaLocal(); }, 150); });
+gBody.addEventListener('change', function(ev){ heredarFila(ev.target.closest && ev.target.closest('tr')); validarGrilla(); guardarGrillaLocal(); });
 gBody.addEventListener('click', function(ev){
   if (!ev.target.getAttribute('data-x')) return;
   var tr = ev.target.closest('tr'); if (!tr) return;
@@ -580,6 +591,7 @@ gBody.addEventListener('paste', function(ev){
     if (!tr) tr = filaNueva(null, true);
     var vals = l.split('\t');
     vals.forEach(function(v, i){ var col = COLS[c0 + i]; if (!col) return; var d = tr.querySelector('.g-' + col); if (d) d.value = valorParaSelect(col, v.trim()); });
+    heredarFila(tr);
     tr = tr.nextElementSibling;
   });
   validarGrilla(); guardarGrillaLocal();
@@ -600,7 +612,7 @@ $('btnRapida').addEventListener('click', function(){
   if (faltan.length){ $('resRapida').innerHTML = '<div class="msg err">Falta: ' + faltan.join(', ') + '.</div>'; return; }
   while (gBody.lastElementChild && filaVacia(leerFila(gBody.lastElementChild))) gBody.lastElementChild.remove();
   ts.forEach(function(t){ var o = {}; for (var k in base) o[k] = base[k]; o.talles = t; filaNueva(o, false); });
-  for (var k2 = 0; k2 < 2; k2++) filaNueva(null, true);
+  filaNueva(null, true);
   var res = validarGrilla(); guardarGrillaLocal();
   var mal = res.filter(function(x){ return !x.vacia && x.a.errores.length; }).length;
   $('resRapida').innerHTML = '<div class="msg ' + (mal ? 'av' : 'ok') + '">' + ts.length + ' fila(s) de ' + esc(base.cod) + ' pasadas a la planilla (talles ' + ts.join(', ') + ')' + (mal ? '; hay filas en rojo para revisar' : '') + '.</div>';
@@ -689,7 +701,7 @@ $('btnProcesarSC').addEventListener('click', function(){
   var p = D.articulos.filter(function(a){ return a.estado !== 'CARGADO' && esSC(a); });
   var sinCat = p.filter(function(a){ return !a.categoria; }).length;
   if (sinCat && !confirm('Hay ' + sinCat + ' variante(s) sin categoría. ¿Seguimos igual?')) return;
-  if (!confirm('Se van a dar de alta ' + p.length + ' variante(s) en EcommApp SIN compra: quedan con stock 0 y sin proveedor. Se abre la pantalla para bajar el Excel de etiquetas. ¿Seguimos?')) return;
+  if (!confirm('Se van a dar de alta ' + p.length + ' variante(s) en EcommApp SIN compra: quedan con stock 0, con proveedor, marca comercial y categoría. Se abre la pantalla para bajar el Excel de etiquetas. ¿Seguimos?')) return;
   window.open(ALTA + '?fuente=panel&modo=sin_compra', '_blank');
   estado('Procesando en otra pestaña. Cuando termine, apretá ⟳ Recargar para ver los pendientes actualizados.', 'av');
 });

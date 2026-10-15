@@ -152,14 +152,15 @@ También se puede cargar una compra solo de artículos existentes: Procesar art�
 Sirve para dar de alta artículos que **no llegan con una compra**. Se crean en EcommApp igual que en el alta común, pero no se abre la pantalla de la compra: se abre la de etiquetas.
 
 1. Entrá a la pestaña **Alta sin compra**. Arriba aparece el aviso "Alta sin compra" y la marca SIN COMPRA en la carga rápida y en la planilla.
-2. Cargá los artículos igual que en la Parte 1: carga rápida o planilla, responsable y **Agregar todo a pendientes sin compra**. La planilla de esta pestaña tiene su propio borrador: lo que dejes a medias en la pestaña Alta no se mezcla.
+2. Cargá los artículos igual que en la Parte 1: carga rápida o planilla, responsable y **Agregar todo a pendientes sin compra**. La planilla de esta pestaña tiene su propio borrador: lo que dejes a medias en la pestaña Alta no se mezcla. Las filas vacías de la planilla están en blanco: copian temporada, marca, rubro y categoría de la fila de arriba recién cuando empezás a escribir en ellas.
 3. Los artículos quedan en **Pendientes de alta sin compra**, abajo en la misma pestaña. Los pendientes de la pestaña Alta no aparecen acá, y estos no aparecen allá: cada botón procesa solo lo suyo.
 4. Apretá **Dar de alta y generar etiquetas**. Se abre una pestaña nueva con el resultado y la lista de variantes creadas.
 5. Poné cuántas etiquetas querés de cada variante (o usá "Aplicar a todas") y apretá **Descargar etiquetas (Excel)**. Las variantes reciben su código de barras de la serie propia 7790001 y queda guardado en EcommApp.
 
 Importante:
 
-- Las variantes quedan con **stock 0** y **sin proveedor, marca comercial ni categoría** en EcommApp, porque eso se completa al cargar una compra. Si después llega mercadería, se carga la compra desde una corrida de Procesar artículos agregándolas como "ya existentes".
+- Las variantes quedan con **stock 0**. Un minuto después del alta quedan con **proveedor, marca comercial y categoría** en EcommApp: el proveedor sale del código de marca del SKU (NF = TOFIARO, SA = Sebastián Uhart, VL = Vameli…), la marca comercial del mapa de la pestaña Marca comercial y la categoría de la planilla. Si la marca del SKU no tiene proveedor conocido, la variante queda solo con la categoría.
+- Si después llega mercadería, se carga la compra desde una corrida de Procesar artículos agregándolas como "ya existentes".
 - Si apenas creadas el Excel dice que algunas "todavía no aparecen en EcommApp", esperá un minuto y volvé a descargar: la carga en EcommApp tarda un ratito.
 
 ## Parte 5: etiquetas de artículos que ya están en EcommApp
