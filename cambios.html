@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cambios · MAHRA</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--tx:#202124;--mut:#5f6368;--bd:#e3e5e8;--pri:#1a73e8;--ok:#0f9d58;--err:#d93025;--warn:#f4b400;--sel:#e8f0fe}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--tx);font-size:14px}
+.hide{display:none!important}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#202124;color:#fff;padding:12px 20px}
+header h1{font-size:17px;margin:0;font-weight:700}header h1 small{font-weight:400;opacity:.7;margin-left:6px}
+header .sp{flex:1}header .us{font-size:12px;opacity:.8}
+header button{background:#3c4043;color:#fff}
+nav{display:flex;gap:4px;padding:10px 20px 0;flex-wrap:wrap}
+nav button{background:transparent;border-radius:8px 8px 0 0;padding:9px 16px;color:var(--mut);font-weight:600}
+nav button.on{background:var(--card);color:var(--tx);box-shadow:0 -1px 0 var(--bd) inset}
+main{padding:0 20px 30px;max-width:1200px}
+.card{background:var(--card);border-radius:12px;box-shadow:0 1px 8px rgba(0,0,0,.06);padding:18px 20px;margin-top:14px}
+h2{font-size:16px;margin:0 0 4px}.sub{color:var(--mut);font-size:12.5px;margin:0 0 12px}
+button{font:inherit;font-weight:600;border:0;border-radius:8px;padding:8px 14px;cursor:pointer}
+button:disabled{opacity:.5;cursor:default}
+.pri{background:var(--pri);color:#fff}.okb{background:var(--ok);color:#fff}.sec{background:var(--sel);color:var(--pri)}.dan{background:#fce8e6;color:var(--err)}
+input,select,textarea{font:inherit;padding:7px 9px;border:1px solid #c9ccd1;border-radius:7px;width:100%;background:#fff;color:var(--tx)}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:3px;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--mut);border-bottom:2px solid var(--bd);padding:7px 6px;position:sticky;top:0;background:var(--card);z-index:1}
+td{border-bottom:1px solid var(--bd);padding:6px;vertical-align:top}
+.mono{font-family:Consolas,monospace;font-size:12.5px}
+.der{text-align:right}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px}
+.t-p{background:#fef7e0;color:#b06000}.t-c{background:#e6f4ea;color:#137333}.t-r{background:#fce8e6;color:#c5221f}.t-g{background:#f1f3f4;color:#5f6368}
+.msg{padding:9px 12px;border-radius:8px;margin-top:10px;font-size:13px}
+.msg.ok{background:#e6f4ea;border-left:4px solid var(--ok)}.msg.err{background:#fce8e6;border-left:4px solid var(--err)}.msg.av{background:#fef7e0;border-left:4px solid var(--warn)}
+.barra{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.barra input{flex:1;min-width:220px}
+.scroll{max-height:46vh;overflow:auto;border:1px solid var(--bd);border-radius:8px;margin-top:8px}
+tr.clic{cursor:pointer}tr.clic:hover td{background:var(--sel)}
+tr.elegida td{background:#e6f4ea}
+tr.gris td{color:#9aa0a6}
+.paso{display:flex;align-items:center;gap:10px}
+.paso .n{width:26px;height:26px;border-radius:50%;background:var(--pri);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none}
+.elegido{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#f8f9fa;border:1px solid var(--bd);border-radius:8px;padding:8px 10px;margin-top:8px}
+.elegido input{width:130px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px 14px}
+.total{font-size:22px;font-weight:800}
+.ingreso{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.caja{width:100%;max-width:360px}.caja label{margin-top:12px}.caja button{width:100%;margin-top:16px;padding:11px}
+.marca-ing{font-weight:800;font-size:22px;letter-spacing:.08em}.marca-ing small{font-weight:400;font-size:12px;letter-spacing:0;margin-left:6px;color:var(--mut)}
+@media (max-width:640px){main{padding:0 10px 20px}.card{padding:14px 12px}header{padding:10px 12px}}
+</style>
+</head>
+<body>
+<div id="ingreso" class="ingreso hide">
+  <form class="card caja" id="formIngreso" autocomplete="on">
+    <div class="marca-ing">MAHRA<small>Calzados</small></div>
+    <h2>Cambios en el local</h2>
+    <p class="sub">Entrá con el usuario y la contraseña del local.</p>
+    <label for="inUsuario">Usuario</label>
+    <input type="text" id="inUsuario" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
+    <label for="inClave">Contraseña</label>
+    <input type="password" id="inClave" name="password" autocomplete="current-password">
+    <div id="errIngreso" class="msg err hide"></div>
+    <button class="pri" type="submit" id="btnEntrar">Entrar</button>
+    <p class="sub" style="margin-top:10px">Queda abierto 30 días en este equipo.</p>
+  </form>
+</div>
+
+<div id="app" class="hide">
+<header>
+  <h1>MAHRA<small>Cambios en el local</small></h1>
+  <div class="sp"></div>
+  <span class="us" id="usuario"></span>
+  <button id="btnSalir">Salir</button>
+</header>
+<nav id="tabs">
+  <button data-tab="nuevo" class="on">Nuevo cambio</button>
+  <button data-tab="hist">Historial</button>
+</nav>
+<main>
+<div id="estado" class="msg hide"></div>
+
+<section id="tab-nuevo">
+  <div class="card">
+    <div class="paso"><span class="n">1</span><h2>Artículo que devuelve la clienta</h2></div>
+    <p class="sub">Escribí el modelo o el SKU (por ejemplo <b>helena</b>) y elegí la variante exacta: color y talle.</p>
+    <div class="barra"><input id="qDev" placeholder="Modelo o SKU del artículo que devuelve"><button class="pri" id="btnDev">Buscar</button></div>
+    <div id="resDev"></div>
+    <div id="listaDev"></div>
+  </div>
+
+  <div class="card" id="cardClienta">
+    <div class="paso"><span class="n">2</span><h2>Clienta</h2></div>
+    <p class="sub">Al elegir el artículo que devuelve aparecen las clientas que compraron esa variante. Tocá la compra que corresponde.</p>
+    <div id="resCompras"><p class="sub">Primero elegí el artículo que devuelve.</p></div>
+    <div class="barra"><input id="qCli" placeholder="¿No aparece? Buscala en EcommApp por nombre, apellido o DNI"><button class="sec" id="btnCli">Buscar clienta</button><button class="sec" id="btnCF">Sin identificar</button></div>
+    <div id="resCli"></div>
+    <div id="clientaElegida"></div>
+  </div>
+
+  <div class="card">
+    <div class="paso"><span class="n">3</span><h2>Artículo que se lleva</h2></div>
+    <p class="sub">Buscá la variante nueva. El precio sale de EcommApp y lo podés corregir.</p>
+    <div class="barra"><input id="qLle" placeholder="Modelo o SKU del artículo que se lleva"><button class="pri" id="btnLle">Buscar</button></div>
+    <div id="resLle"></div>
+    <div id="listaLle"></div>
+  </div>
+
+  <div class="card">
+    <div class="paso"><span class="n">4</span><h2>Resumen y registro</h2></div>
+    <div class="grid" style="margin-top:10px">
+      <div><label>Devuelve</label><div class="total" id="totDev">$ 0</div></div>
+      <div><label>Se lleva</label><div class="total" id="totLle">$ 0</div></div>
+      <div><label>Diferencia</label><div class="total" id="totDif">$ 0</div><div class="sub" id="txtDif"></div></div>
+    </div>
+    <div class="grid" style="margin-top:12px">
+      <div id="boxForma" class="hide"><label for="selForma">Forma de cobro de la diferencia</label><select id="selForma"></select></div>
+      <div><label for="selResp">¿Quién hace el cambio?</label><select id="selResp"></select></div>
+      <div style="grid-column:1/-1"><label for="txtObs">Observaciones (opcional)</label><input id="txtObs" maxlength="200" placeholder="Por ejemplo: cambio de talle, falla, etc."></div>
+    </div>
+    <div id="avisoFavor" class="msg av hide"></div>
+    <div class="barra"><button class="okb" id="btnRegistrar">Registrar cambio en EcommApp</button><button class="sec" id="btnLimpiar">Empezar de nuevo</button></div>
+    <div id="resultado"></div>
+  </div>
+</section>
+
+<section id="tab-hist" class="hide">
+  <div class="card">
+    <div class="barra" style="margin-top:0"><h2 style="margin:0">Cambios registrados</h2><div style="flex:1"></div><button class="sec" id="btnHist">⟳ Actualizar</button></div>
+    <p class="sub">En los cambios con saldo a favor, tildá "Cta cte cargada" cuando ya lo cargaste en la cuenta corriente de la clienta.</p>
+    <div class="scroll" style="max-height:70vh"><table><thead><tr><th>Fecha</th><th>Clienta</th><th>Devuelve</th><th>Se lleva</th><th class="der">Diferencia</th><th>Resolución</th><th>Presupuesto</th><th>Hizo</th><th>Cta cte cargada</th></tr></thead><tbody id="tbHist"></tbody></table></div>
+  </div>
+</section>
+</main>
+</div>
+
+<script>
+(function(){
+'use strict';
+var API = 'https://n8n.mahra-ai.online/webhook/cambios-panel-api';
+var LOGIN = 'https://n8n.mahra-ai.online/webhook/panel-acceso';
+var sesion = null, INI = null;
+var PRUEBA = (/[?&]prueba=([^&#]+)/.exec(location.search) || [])[1] || ''; // solo consultas, para verificar el panel
+var C = nuevoCambio();
+function nuevoCambio(){ return { uid: uid(), devuelve: [], lleva: [], clienta: null, origen: '' }; }
+function uid(){ try { return crypto.randomUUID(); } catch(e){ return 'c' + Date.now() + Math.random().toString(36).slice(2); } }
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function money(n){ n = Number(n)||0; return (n < 0 ? '- ' : '') + '$ ' + Math.abs(Math.round(n)).toLocaleString('es-AR'); }
+function num(s){ s = String(s==null?'':s).replace(/[^0-9.,]/g,''); if(!s) return 0; if(s.indexOf(',')>=0) s = s.replace(/\./g,'').replace(',','.'); else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g,''); var n = Number(s); return isFinite(n)?n:0; }
+function fecha(f){ f = String(f||''); var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(f); return m ? m[3] + '/' + m[2] + '/' + m[1] : f; }
+
+// ---- sesion (la misma del Panel de Alta) ----
+function valida(s){ return !!(s && s.token && s.vence && Date.parse(s.vence) > Date.now()); }
+function leerSesion(){
+  try { var s = JSON.parse(localStorage.getItem('mahra_sesion_alta') || 'null'); if (valida(s)) return s; } catch(e){}
+  try { var m = /[#&]s=([^&]+)/.exec(location.hash||''); if (m){ var h = JSON.parse(decodeURIComponent(m[1])); if (valida(h)) return h; } } catch(e){}
+  return null;
+}
+function guardarSesion(s){
+  sesion = s;
+  try { if (s) localStorage.setItem('mahra_sesion_alta', JSON.stringify(s)); else localStorage.removeItem('mahra_sesion_alta'); } catch(e){}
+  try { history.replaceState(null,'',location.pathname + location.search + (s ? '#s=' + encodeURIComponent(JSON.stringify({token:s.token,usuario:s.usuario,vence:s.vence})) : '')); } catch(e){}
+}
+function pedirIngreso(aviso){
+  guardarSesion(null);
+  $('app').classList.add('hide'); $('ingreso').classList.remove('hide');
+  var e = $('errIngreso'); if (aviso){ e.textContent = aviso; e.classList.remove('hide'); } else e.classList.add('hide');
+  setTimeout(function(){ var u = $('inUsuario'); if (!u.value) u.focus(); else $('inClave').focus(); }, 50);
+}
+$('formIngreso').addEventListener('submit', function(ev){
+  ev.preventDefault();
+  var b = $('btnEntrar'); b.disabled = true; b.textContent = 'Entrando…';
+  fetch(LOGIN, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ usuario: $('inUsuario').value.trim(), clave: $('inClave').value }) })
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      if (!res || !res.ok) throw new Error((res && res.error) || 'Usuario o contraseña incorrectos');
+      guardarSesion({ token: res.token, usuario: res.usuario, vence: res.vence });
+      $('inClave').value = ''; $('ingreso').classList.add('hide'); iniciar();
+    })
+    .catch(function(err){ var e = $('errIngreso'); e.textContent = err.message; e.classList.remove('hide'); })
+    .then(function(){ b.disabled = false; b.textContent = 'Entrar'; });
+});
+$('btnSalir').addEventListener('click', function(){ pedirIngreso(); });
+
+function api(body){
+  body.token = sesion ? sesion.token : '';
+  if (PRUEBA) body.clave_prueba = PRUEBA;
+  return fetch(API, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(body) })
+    .then(function(r){ return r.json(); })
+    .then(function(j){ if (j && j.error === 'sin_sesion'){ pedirIngreso('La sesión venció: volvé a entrar.'); throw new Error('sin sesión'); } return j; });
+}
+function estado(txt, tipo){ var e = $('estado'); if (!txt){ e.classList.add('hide'); return; } e.className = 'msg ' + (tipo||''); e.textContent = txt; }
+
+function iniciar(){
+  estado('Cargando…');
+  api({ accion:'inicio' }).then(function(j){
+    if (!j.ok) throw new Error(j.error || 'No se pudo abrir el panel');
+    INI = j; estado('');
+    $('app').classList.remove('hide');
+    $('usuario').textContent = j.usuario || '';
+    $('selResp').innerHTML = '<option value="">Elegí…</option>' + j.responsables.map(function(r){ return '<option>' + esc(r) + '</option>'; }).join('');
+    $('selForma').innerHTML = '<option value="">Elegí…</option>' + j.formas.map(function(f){ return '<option value="' + f.id + '">' + esc(f.nombre) + '</option>'; }).join('');
+    try { var r = localStorage.getItem('mahra_cambios_resp'); if (r) $('selResp').value = r; } catch(e){}
+    pintarHistorial(j.historial || []);
+    pintarTodo();
+  }).catch(function(e){ if (e.message !== 'sin sesión') estado('No se pudo abrir el panel: ' + e.message, 'err'); });
+}
+
+// ---- pestañas ----
+Array.prototype.forEach.call(document.querySelectorAll('#tabs button'), function(b){
+  b.addEventListener('click', function(){
+    Array.prototype.forEach.call(document.querySelectorAll('#tabs button'), function(x){ x.classList.toggle('on', x === b); });
+    $('tab-nuevo').classList.toggle('hide', b.dataset.tab !== 'nuevo');
+    $('tab-hist').classList.toggle('hide', b.dataset.tab !== 'hist');
+    if (b.dataset.tab === 'hist') cargarHistorial();
+  });
+});
+
+// ---- busqueda de variantes ----
+function buscarVariantes(q, destino, lado){
+  q = q.trim(); var cont = $(destino);
+  if (q.length < 2){ cont.innerHTML = '<div class="msg av">Escribí al menos 2 letras.</div>'; return; }
+  cont.innerHTML = '<p class="sub">Buscando en EcommApp…</p>';
+  api({ accion:'variantes', q: q }).then(function(j){
+    if (!j.ok) throw new Error(j.error || 'error');
+    var vs = j.variantes || [];
+    if (!vs.length){ cont.innerHTML = '<div class="msg av">No encontré variantes con "' + esc(q) + '".</div>'; return; }
+    cont.innerHTML = '<div class="scroll"><table><thead><tr><th>SKU</th><th>Detalle</th><th class="der">Precio</th><th class="der">Stock</th></tr></thead><tbody>' +
+      vs.map(function(v, i){ return '<tr class="clic' + (lado === 'lleva' && v.stock <= 0 ? ' gris' : '') + '" data-i="' + i + '"><td class="mono">' + esc(v.sku) + '</td><td>' + esc(v.detalle || v.producto) + '</td><td class="der">' + money(v.precio) + '</td><td class="der">' + v.stock + '</td></tr>'; }).join('') +
+      '</tbody></table></div>';
+    Array.prototype.forEach.call(cont.querySelectorAll('tr.clic'), function(tr){
+      tr.addEventListener('click', function(){ elegirVariante(vs[Number(tr.dataset.i)], lado); cont.innerHTML = ''; });
+    });
+  }).catch(function(e){ if (e.message !== 'sin sesión') cont.innerHTML = '<div class="msg err">No se pudo buscar: ' + esc(e.message) + '</div>'; });
+}
+$('btnDev').addEventListener('click', function(){ buscarVariantes($('qDev').value, 'resDev', 'devuelve'); });
+$('btnLle').addEventListener('click', function(){ buscarVariantes($('qLle').value, 'resLle', 'lleva'); });
+$('qDev').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('btnDev').click(); });
+$('qLle').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('btnLle').click(); });
+
+function elegirVariante(v, lado){
+  var item = { id: v.id, sku: v.sku, detalle: v.detalle || v.producto, precio: v.precio, stock: v.stock, precio_lista: v.precio };
+  C[lado].push(item);
+  if (lado === 'devuelve' && C.devuelve.length === 1) cargarCompras(v.sku);
+  pintarTodo();
+}
+function quitar(lado, i){ C[lado].splice(i, 1); if (lado === 'devuelve' && !C.devuelve.length){ $('resCompras').innerHTML = '<p class="sub">Primero elegí el artículo que devuelve.</p>'; } pintarTodo(); }
+
+function pintarLista(lado, cont){
+  var html = C[lado].map(function(x, i){
+    var aviso = (lado === 'lleva' && x.stock <= 0) ? ' <span class="tag t-r">SIN STOCK en EcommApp</span>' : '';
+    var lista = (x.precio !== x.precio_lista) ? ' <span class="sub">(lista ' + money(x.precio_lista) + ')</span>' : '';
+    return '<div class="elegido"><span class="mono"><b>' + esc(x.sku) + '</b></span><span>' + esc(x.detalle) + '</span>' + aviso +
+      '<span style="flex:1"></span><label style="margin:0">Precio</label><input data-lado="' + lado + '" data-i="' + i + '" value="' + Math.round(x.precio) + '" inputmode="decimal">' + lista +
+      '<button class="dan" data-quitar="' + lado + '" data-i="' + i + '">Quitar</button></div>';
+  }).join('');
+  $(cont).innerHTML = html;
+  Array.prototype.forEach.call($(cont).querySelectorAll('input[data-lado]'), function(inp){
+    inp.addEventListener('change', function(){ C[inp.dataset.lado][Number(inp.dataset.i)].precio = num(inp.value); pintarTodo(); });
+  });
+  Array.prototype.forEach.call($(cont).querySelectorAll('button[data-quitar]'), function(b){
+    b.addEventListener('click', function(){ quitar(b.dataset.quitar, Number(b.dataset.i)); });
+  });
+}
+
+// ---- clientas que compraron la variante ----
+var COMPRAS = [];
+function cargarCompras(sku){
+  var cont = $('resCompras');
+  cont.innerHTML = '<p class="sub">Buscando quién compró ' + esc(sku) + ' (EcommApp, planilla de ventas y Tienda Nube)…</p>';
+  api({ accion:'clientas', sku: sku }).then(function(j){
+    if (!j.ok) throw new Error(j.error || 'error');
+    COMPRAS = j.compras || [];
+    var av = (j.avisos || []).map(function(a){ return '<div class="msg av">' + esc(a) + '</div>'; }).join('');
+    if (!COMPRAS.length){ cont.innerHTML = av + '<div class="msg av">No encontré compras de ' + esc(sku) + '. Buscá a la clienta abajo.</div>'; return; }
+    cont.innerHTML = av + '<div class="scroll"><table><thead><tr><th>Fecha</th><th>Compra</th><th>Clienta</th><th>DNI/CUIT</th><th class="der">Pagó</th><th>Forma de pago</th><th>Vendió</th></tr></thead><tbody>' +
+      COMPRAS.map(function(c, i){
+        var tag = c.es_cambio ? ' <span class="tag t-p">cambio</span>' : '';
+        var pago = c.monto_linea != null && c.cantidad ? money(c.monto_linea / c.cantidad) : '—';
+        var sin = c.sin_clienta || !c.clienta;
+        return '<tr class="' + (sin ? 'gris' : 'clic') + '" data-i="' + i + '"><td>' + fecha(c.fecha) + '</td><td>' + esc(c.origen) + tag + '</td><td>' + (sin ? '<i>sin datos de la clienta</i>' : esc(c.clienta)) + '</td><td class="mono">' + esc(c.documento) + '</td><td class="der">' + pago + '</td><td>' + esc(c.forma_pago) + '</td><td>' + esc(c.vendedora || c.canal) + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+    Array.prototype.forEach.call(cont.querySelectorAll('tr.clic'), function(tr){
+      tr.addEventListener('click', function(){ elegirCompra(COMPRAS[Number(tr.dataset.i)]); });
+    });
+  }).catch(function(e){ if (e.message !== 'sin sesión') cont.innerHTML = '<div class="msg err">No se pudo buscar las compras: ' + esc(e.message) + '</div>'; });
+}
+function partirNombre(n){ n = String(n||'').trim(); var i = n.indexOf(' '); return i < 0 ? { nombre: n, apellido: '' } : { nombre: n.slice(0, i), apellido: n.slice(i + 1) }; }
+function elegirCompra(c){
+  var nn = partirNombre(c.clienta);
+  C.clienta = { id: c.id_cliente || 0, nombre: nn.nombre, apellido: nn.apellido, documento: c.documento || '', correo: c.correo || '', telefono: c.telefono || '', tipo_documento: (String(c.documento||'').length >= 11 ? 80 : 96) };
+  C.origen = c.origen + ' del ' + fecha(c.fecha);
+  if (C.devuelve.length === 1 && c.monto_linea != null && c.cantidad > 0){ C.devuelve[0].precio = Math.round(c.monto_linea / c.cantidad); }
+  pintarTodo();
+}
+$('btnCli').addEventListener('click', function(){
+  var q = $('qCli').value.trim(), cont = $('resCli');
+  if (q.length < 3){ cont.innerHTML = '<div class="msg av">Escribí al menos 3 letras.</div>'; return; }
+  cont.innerHTML = '<p class="sub">Buscando en EcommApp…</p>';
+  api({ accion:'buscar_clienta', q: q }).then(function(j){
+    var cs = j.clientas || [];
+    if (!cs.length){ cont.innerHTML = '<div class="msg av">No encontré clientas con "' + esc(q) + '".</div>'; return; }
+    cont.innerHTML = '<div class="scroll"><table><thead><tr><th>Clienta</th><th>DNI/CUIT</th><th>Teléfono</th><th>Ciudad</th></tr></thead><tbody>' +
+      cs.map(function(c, i){ return '<tr class="clic" data-i="' + i + '"><td>' + esc(c.nombre + ' ' + c.apellido) + '</td><td class="mono">' + esc(c.documento) + '</td><td>' + esc(c.telefono) + '</td><td>' + esc(c.ciudad) + '</td></tr>'; }).join('') + '</tbody></table></div>';
+    Array.prototype.forEach.call(cont.querySelectorAll('tr.clic'), function(tr){
+      tr.addEventListener('click', function(){ C.clienta = cs[Number(tr.dataset.i)]; C.origen = C.origen || ''; cont.innerHTML = ''; pintarTodo(); });
+    });
+  }).catch(function(e){ if (e.message !== 'sin sesión') cont.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; });
+});
+$('qCli').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('btnCli').click(); });
+$('btnCF').addEventListener('click', function(){ C.clienta = { id: 0, nombre: '', apellido: '', documento: '', sinIdentificar: true }; C.origen = ''; pintarTodo(); });
+
+// ---- resumen ----
+function totales(){
+  var d = C.devuelve.reduce(function(a, x){ return a + (Number(x.precio)||0); }, 0);
+  var l = C.lleva.reduce(function(a, x){ return a + (Number(x.precio)||0); }, 0);
+  return { dev: d, lle: l, dif: Math.round((l - d) * 100) / 100 };
+}
+function pintarTodo(){
+  pintarLista('devuelve', 'listaDev');
+  pintarLista('lleva', 'listaLle');
+  var ce = $('clientaElegida');
+  if (C.clienta){
+    var nom = C.clienta.sinIdentificar ? 'Sin identificar (Consumidor final)' : (C.clienta.nombre + ' ' + C.clienta.apellido).trim();
+    ce.innerHTML = '<div class="elegido"><b>' + esc(nom) + '</b>' + (C.clienta.documento ? ' <span class="mono">' + esc(C.clienta.documento) + '</span>' : '') + (C.origen ? ' <span class="sub" style="margin:0">· ' + esc(C.origen) + '</span>' : '') + (C.clienta.id ? ' <span class="tag t-c">ficha EcommApp</span>' : (C.clienta.sinIdentificar ? '' : ' <span class="tag t-p">sin ficha: se crea en EcommApp</span>')) + '<span style="flex:1"></span><button class="dan" id="btnQuitarCli">Cambiar</button></div>';
+    $('btnQuitarCli').addEventListener('click', function(){ C.clienta = null; C.origen = ''; pintarTodo(); });
+  } else ce.innerHTML = '';
+  var t = totales();
+  $('totDev').textContent = money(t.dev); $('totLle').textContent = money(t.lle); $('totDif').textContent = money(Math.abs(t.dif));
+  var txt = '', favor = $('avisoFavor');
+  $('boxForma').classList.toggle('hide', !(t.dif > 0));
+  favor.classList.add('hide');
+  if (!C.devuelve.length || !C.lleva.length) txt = '';
+  else if (t.dif > 0) txt = 'La clienta paga la diferencia. Se cobra en la caja MAHRA LDT.';
+  else if (t.dif < 0){ txt = 'Saldo a favor de la clienta.'; favor.innerHTML = '<b>Saldo a favor de ' + money(-t.dif) + '.</b> El panel registra el cambio en EcommApp, pero el saldo hay que cargarlo a mano en la cuenta corriente de la clienta. Después tildalo en el Historial.'; favor.classList.remove('hide'); }
+  else txt = 'Sin diferencia.';
+  $('txtDif').textContent = txt;
+}
+
+$('selResp').addEventListener('change', function(){ try { localStorage.setItem('mahra_cambios_resp', $('selResp').value); } catch(e){} });
+$('btnLimpiar').addEventListener('click', function(){ if (C.devuelve.length + C.lleva.length && !confirm('¿Borrar lo cargado y empezar un cambio nuevo?')) return; reiniciar(); });
+function reiniciar(){ C = nuevoCambio(); COMPRAS = []; ['resDev','resLle','resCli','resultado'].forEach(function(id){ $(id).innerHTML = ''; }); $('resCompras').innerHTML = '<p class="sub">Primero elegí el artículo que devuelve.</p>'; $('qDev').value = ''; $('qLle').value = ''; $('qCli').value = ''; $('txtObs').value = ''; $('selForma').value = ''; pintarTodo(); window.scrollTo(0, 0); }
+
+$('btnRegistrar').addEventListener('click', function(){
+  var t = totales(), res = $('resultado');
+  var falta = [];
+  if (!C.devuelve.length) falta.push('el artículo que devuelve');
+  if (!C.lleva.length) falta.push('el artículo que se lleva');
+  if (!C.clienta) falta.push('la clienta (o "Sin identificar")');
+  if (!$('selResp').value) falta.push('quién hace el cambio');
+  if (t.dif > 0 && !$('selForma').value) falta.push('la forma de cobro');
+  if (t.dif < 0 && C.clienta && C.clienta.sinIdentificar) falta.push('identificar a la clienta (tiene saldo a favor)');
+  if (falta.length){ res.innerHTML = '<div class="msg err">Falta: ' + esc(falta.join(', ')) + '.</div>'; return; }
+  var forma = $('selForma').selectedOptions[0] ? $('selForma').selectedOptions[0].textContent : '';
+  var resumen = 'Devuelve: ' + C.devuelve.map(function(x){ return x.sku + ' (' + money(x.precio) + ')'; }).join(', ') +
+    '\nSe lleva: ' + C.lleva.map(function(x){ return x.sku + ' (' + money(x.precio) + ')'; }).join(', ') +
+    '\n' + (t.dif > 0 ? 'Cobra diferencia: ' + money(t.dif) + ' en ' + forma : t.dif < 0 ? 'Saldo a favor: ' + money(-t.dif) + ' (cargarlo a mano en la cta cte)' : 'Sin diferencia') +
+    '\n\n¿Registrar el cambio en EcommApp?';
+  if (!confirm(resumen)) return;
+  var b = $('btnRegistrar'); b.disabled = true; b.textContent = 'Registrando… (puede tardar un minuto)';
+  res.innerHTML = '';
+  var cl = C.clienta.sinIdentificar ? {} : C.clienta;
+  api({ accion:'registrar', cambio: { uid: C.uid, devuelve: C.devuelve, lleva: C.lleva, clienta: cl, origen: C.origen, responsable: $('selResp').value, forma_pago_id: t.dif > 0 ? Number($('selForma').value) : 0, observaciones: $('txtObs').value.trim() } })
+    .then(function(j){
+      if (!j.ok) throw new Error(j.error || 'No se pudo registrar');
+      res.innerHTML = '<div class="msg ok"><b>' + esc(j.mensaje || 'Cambio registrado.') + '</b><br>Presupuesto N° ' + esc(j.presupuesto_numero || '?') + ' en EcommApp.</div><div class="barra"><button class="pri" id="btnOtro">Cargar otro cambio</button></div>';
+      $('btnOtro').addEventListener('click', reiniciar);
+      C.uid = uid();
+    })
+    .catch(function(e){ if (e.message !== 'sin sesión') res.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; })
+    .then(function(){ b.disabled = false; b.textContent = 'Registrar cambio en EcommApp'; });
+});
+
+// ---- historial ----
+function cargarHistorial(){
+  api({ accion:'historial' }).then(function(j){ if (j.ok) pintarHistorial(j.historial || []); }).catch(function(){});
+}
+$('btnHist').addEventListener('click', cargarHistorial);
+function pintarHistorial(h){
+  $('tbHist').innerHTML = h.length ? h.map(function(r){
+    var tag = r.resolucion === 'SALDO A FAVOR' ? 't-p' : r.resolucion === 'PAGA DIFERENCIA' ? 't-c' : 't-g';
+    var cc = r.resolucion === 'SALDO A FAVOR' ? '<input type="checkbox" data-id="' + r.id + '"' + (r.cta_cte_ajustada ? ' checked' : '') + ' style="width:auto">' : '—';
+    var d = new Date(r.fecha); var f = isNaN(d) ? '' : d.toLocaleString('es-AR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+    return '<tr><td>' + f + '</td><td>' + esc(r.clienta) + '<div class="sub" style="margin:0">' + esc(r.origen) + '</div></td><td class="mono">' + esc(r.devuelve) + '</td><td class="mono">' + esc(r.lleva) + '</td><td class="der">' + money(r.diferencia) + '</td><td><span class="tag ' + tag + '">' + esc(r.resolucion) + '</span>' + (r.forma_pago ? '<div class="sub" style="margin:0">' + esc(r.forma_pago) + '</div>' : '') + '</td><td>' + esc(r.presupuesto_numero || r.presupuesto_id) + '</td><td>' + esc(r.responsable) + '</td><td>' + cc + '</td></tr>';
+  }).join('') : '<tr><td colspan="9" class="sub">Todavía no hay cambios registrados desde el panel.</td></tr>';
+  Array.prototype.forEach.call($('tbHist').querySelectorAll('input[data-id]'), function(c){
+    c.addEventListener('change', function(){
+      c.disabled = true;
+      api({ accion:'marcar_cc', id: Number(c.dataset.id), valor: c.checked }).catch(function(){ c.checked = !c.checked; }).then(function(){ c.disabled = false; });
+    });
+  });
+}
+
+sesion = leerSesion();
+if (PRUEBA){ $('ingreso').classList.add('hide'); iniciar(); }
+else if (sesion){ guardarSesion(sesion); iniciar(); } else pedirIngreso();
+})();
+</script>
+</body>
+</html>
