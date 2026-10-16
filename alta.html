@@ -507,7 +507,10 @@ function armarFila(o, ocupados){
     var sku = [cp, temp, c ? U(c.color_sku) : '?', t, r ? U(r.codigo) : '?', m ? U(m.codigo) : '?'].join('-');
     return { sku: sku, talle: t, ya: existentes[sku], rep: ocupados && ocupados[sku] };
   });
-  filas.forEach(function(f){ if (f.ya) errores.push(f.sku + ' ya existe (' + (f.ya.estado === 'CARGADO' ? 'cargado' : 'pendiente') + ')'); else if (f.rep) errores.push(f.sku + ' repetido en la planilla'); });
+  // 16/10/2026: si figura CARGADO no se bloquea acá: al guardar se verifica en EcommApp y, si no existe allá, se reemplaza la fila vieja.
+  var verificar = filas.filter(function(f){ return f.ya && f.ya.estado === 'CARGADO'; });
+  filas.forEach(function(f){ if (f.ya && f.ya.estado !== 'CARGADO') errores.push(f.sku + ' ya existe (pendiente)'); else if (f.rep) errores.push(f.sku + ' repetido en la planilla'); });
+  if (verificar.length) avisos.push(verificar.map(function(f){ return f.sku; }).join(', ') + ' figura(n) cargado(s): al guardar se controla en EcommApp; si no existe allá, se vuelve a dar de alta');
   return { id: o.id, cp: cp, temp: temp, color: color, marca: marca, rubro: rubro, categoria: cat, titulo: titulo, obs: String(o.obs||'').trim(), costo: num(o.costo), precio: num(o.precio), filas: filas, errores: errores, avisos: avisos };
 }
 function validarGrilla(){
@@ -650,6 +653,7 @@ $('btnGuardarTodo').addEventListener('click', function(){
     var rechPorSku = {}; rech.forEach(function(r){ if (r.sku) rechPorSku[U(r.sku)] = r.motivo; });
     var h = '';
     if (ok.length) h += '<div class="msg ok">Agregadas a pendientes: ' + ok.length + ' variante(s) de ' + listas.length + ' fila(s).</div>';
+    if ((j.reemplazadas || []).length) h += '<div class="msg av">Figuraban cargadas pero no existen en EcommApp, se reemplazó la fila vieja: ' + j.reemplazadas.map(esc).join(', ') + '</div>';
     if (rech.length) h += '<div class="msg err">Rechazadas: ' + rech.map(function(r){ return esc(r.sku || '') + ': ' + esc(r.motivo); }).join('<br>') + '</div>';
     if (conError) h += '<div class="msg av">Quedaron en la planilla ' + conError + ' fila(s) con errores para corregir.</div>';
     $('resGuardar').innerHTML = h;
