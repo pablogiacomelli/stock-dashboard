@@ -132,6 +132,9 @@ tr.gris td{color:#9aa0a6}
     <p class="sub">Buscá a la clienta por nombre, apellido o DNI/CUIT y tocá el presupuesto de la compra que devuelve.</p>
     <div class="barra"><input id="qDevCli" placeholder="Nombre, apellido o DNI/CUIT de la clienta"><button class="pri" id="btnDevCli">Buscar compras</button></div>
     <div id="resDevPres"></div>
+    <p class="sub" style="margin-top:14px">¿Es una <b>orden de la tienda online cancelada sin devolver el pago</b>? Buscala por número de orden, nombre o DNI. Si al cancelar se le devolvió el pago, no se carga nada acá.</p>
+    <div class="barra"><input id="qDevTN" placeholder="N° de orden, nombre o DNI de la clienta"><button class="sec" id="btnDevTN">Buscar orden cancelada de Tienda Nube</button></div>
+    <div id="resDevTN"></div>
   </div>
 
   <div class="card">
@@ -146,7 +149,7 @@ tr.gris td{color:#9aa0a6}
       <div><label for="selRespDev">¿Quién hace la devolución?</label><select id="selRespDev"></select></div>
       <div style="grid-column:1/-1"><label for="txtObsDev">Observaciones (opcional)</label><input id="txtObsDev" maxlength="200" placeholder="Por ejemplo: no le quedó, falla, etc."></div>
     </div>
-    <p class="sub" style="margin-top:10px">Se carga en EcommApp un presupuesto con el artículo en cantidad negativa (vuelve al stock) al precio que pagó, y el importe queda como saldo a favor en la cuenta corriente de la clienta.</p>
+    <p class="sub" style="margin-top:10px" id="txtDevExp">Se carga en EcommApp un presupuesto con el artículo en cantidad negativa (vuelve al stock) al precio que pagó, y el importe queda como saldo a favor en la cuenta corriente de la clienta.</p>
     <div class="barra"><button class="okb" id="btnRegDev">Registrar devolución en EcommApp</button><button class="sec" id="btnLimpiarDev">Empezar de nuevo</button></div>
     <div id="resultadoDev"></div>
   </div>
@@ -404,11 +407,18 @@ $('btnRegistrar').addEventListener('click', function(){
 
 // ---- devolucion (23/10/2026): presupuesto en negativo + saldo a favor en la cuenta corriente ----
 var D = nuevaDev();
-function nuevaDev(){ return { uid: uid(), pres: null, clienta: null, lineas: [] }; }
-function totalDev(){ return D.lineas.reduce(function(a, l){ return a + (Number(l.devolver)||0) * (Number(l.precio)||0); }, 0); }
+function nuevaDev(){ return { uid: uid(), pres: null, clienta: null, lineas: [], tn: null, fichas: [], ficha: null }; }
+var EXP_PRES = 'Se carga en EcommApp un presupuesto con el artículo en cantidad negativa (vuelve al stock) al precio que pagó, y el importe queda como saldo a favor en la cuenta corriente de la clienta.';
+var EXP_TN = 'Se carga en la cuenta corriente de la clienta un saldo a favor por el total que pagó, con el texto "POR CANCELACION DE ORDEN DE TIENDA N° …". El stock lo repone Tienda Nube al cancelar y, si la venta estaba facturada, la nota de crédito la hace EcommApp sola.';
+function totalDev(){
+  if (D.tn) return D.tn.pago === 'pagada' ? Number(D.tn.total) || 0 : 0;
+  return D.lineas.reduce(function(a, l){ return a + (Number(l.devolver)||0) * (Number(l.precio)||0); }, 0);
+}
 function pintarDev(){
   $('totDevol').textContent = money(totalDev());
+  $('txtDevExp').textContent = D.tn ? EXP_TN : EXP_PRES;
   var cont = $('devDetalle');
+  if (D.tn){ pintarDevTN(cont); return; }
   if (!D.pres){ cont.innerHTML = '<p class="sub">Primero elegí el presupuesto.</p>'; return; }
   var nom = (D.clienta.nombre + ' ' + D.clienta.apellido).trim();
   var head = '<div class="elegido"><b>Presupuesto ' + esc(D.pres.numero) + '</b><span>' + fecha(D.pres.fecha) + '</span><span>' + esc(nom) + '</span>' + (D.clienta.documento ? '<span class="mono">' + esc(D.clienta.documento) + '</span>' : '') + '<span>Total ' + money(D.pres.total) + '</span>' + (D.clienta.id ? ' <span class="tag t-c">ficha EcommApp</span>' : ' <span class="tag t-r">sin ficha de clienta</span>') + '</div>';
@@ -448,17 +458,108 @@ function elegirPresupuesto(p){
   cont.innerHTML = '<p class="sub">Leyendo el presupuesto ' + esc(p.numero) + '…</p>';
   api({ accion:'presupuesto_detalle', id: p.id }).then(function(j){
     if (!j.ok) throw new Error(j.error || 'error');
-    D.pres = j.presupuesto; D.pres.estado = p.estado; D.clienta = j.clienta;
+    D.tn = null; D.pres = j.presupuesto; D.pres.estado = p.estado; D.clienta = j.clienta;
     D.lineas = (j.lineas || []).map(function(l){ l.devolver = 0; return l; });
     if (D.lineas.length === 1 && D.lineas[0].disponible === 1 && D.lineas[0].id) D.lineas[0].devolver = 1;
     $('resDevPres').innerHTML = ''; $('resultadoDev').innerHTML = '';
     pintarDev();
   }).catch(function(e){ if (e.message !== 'sin sesión') cont.innerHTML = '<div class="msg err">No se pudo leer el presupuesto: ' + esc(e.message) + '</div>'; });
 }
+// ---- ordenes de Tienda Nube canceladas sin devolver el pago (29/10/2026): solo saldo a favor en la cuenta corriente ----
+var PAGO_TN = { pagada: ['t-c', 'pagada'], reintegrada: ['t-g', 'pago devuelto'], sin_pago: ['t-p', 'sin pago registrado'] };
+$('btnDevTN').addEventListener('click', function(){
+  var q = $('qDevTN').value.trim(), cont = $('resDevTN');
+  if (q.length < 3){ cont.innerHTML = '<div class="msg av">Escribí al menos 3 letras o números.</div>'; return; }
+  cont.innerHTML = '<p class="sub">Buscando órdenes canceladas en Tienda Nube…</p>';
+  api({ accion:'ordenes_tn', q: q }).then(function(j){
+    if (!j.ok) throw new Error(j.error || 'error');
+    var os = j.ordenes || [];
+    if (!os.length){ cont.innerHTML = '<div class="msg av">No encontré órdenes <b>canceladas</b> de "' + esc(q) + '" en Tienda Nube. Si la orden no está cancelada, primero cancelala en Tienda Nube.</div>'; return; }
+    cont.innerHTML = '<div class="scroll"><table><thead><tr><th>Orden</th><th>Compra</th><th>Cancelada</th><th>Clienta</th><th>DNI/CUIT</th><th class="der">Total</th><th>Forma de pago</th><th>Pago</th></tr></thead><tbody>' +
+      os.map(function(o, i){
+        var t = PAGO_TN[o.pago] || PAGO_TN.sin_pago, ok = o.pago === 'pagada' && !o.registrada;
+        return '<tr class="' + (ok ? 'clic' : 'gris') + '" data-i="' + i + '"><td>#' + esc(o.numero) + '</td><td>' + fecha(o.fecha) + '</td><td>' + fecha(o.cancelada) + '</td><td>' + esc(o.clienta) + '</td><td class="mono">' + esc(o.documento) + '</td><td class="der">' + money(o.total) + '</td><td>' + esc(o.forma_pago) + '</td><td><span class="tag ' + t[0] + '">' + t[1] + '</span>' + (o.registrada ? ' <span class="tag t-g">ya cargada el ' + fecha(o.registrada.fecha) + '</span>' : '') + '</td></tr>';
+      }).join('') + '</tbody></table></div><p class="sub" style="margin-top:6px">Solo se cargan las órdenes con el pago registrado en Tienda Nube. Las que tienen el pago devuelto no van por el panel.</p>';
+    Array.prototype.forEach.call(cont.querySelectorAll('tr.clic'), function(tr){
+      tr.addEventListener('click', function(){ elegirOrdenTN(os[Number(tr.dataset.i)]); });
+    });
+  }).catch(function(e){ if (e.message !== 'sin sesión') cont.innerHTML = '<div class="msg err">No se pudo buscar: ' + esc(e.message) + '</div>'; });
+});
+$('qDevTN').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('btnDevTN').click(); });
+function elegirOrdenTN(o){
+  var cont = $('devDetalle');
+  cont.innerHTML = '<p class="sub">Leyendo la orden #' + esc(o.numero) + '…</p>';
+  api({ accion:'orden_tn', id: o.id }).then(function(j){
+    if (!j.ok) throw new Error(j.error || 'error');
+    D = nuevaDev(); D.tn = j.orden; D.tn.lineas = j.lineas || []; D.fichas = j.fichas || [];
+    if (D.fichas.length === 1) D.ficha = D.fichas[0];
+    $('resDevTN').innerHTML = ''; $('resDevPres').innerHTML = ''; $('resultadoDev').innerHTML = '';
+    pintarDev();
+  }).catch(function(e){ if (e.message !== 'sin sesión') cont.innerHTML = '<div class="msg err">No se pudo leer la orden: ' + esc(e.message) + '</div>'; });
+}
+function nomFicha(f){ return (f.nombre + ' ' + f.apellido).replace(/\s+/g, ' ').trim(); }
+function pintarDevTN(cont){
+  var o = D.tn, t = PAGO_TN[o.pago] || PAGO_TN.sin_pago;
+  var head = '<div class="elegido"><b>Orden TN #' + esc(o.numero) + '</b><span>Compra ' + fecha(o.fecha) + '</span><span>Cancelada ' + fecha(o.cancelada) + '</span><span>' + esc(o.clienta) + '</span>' + (o.documento ? '<span class="mono">' + esc(o.documento) + '</span>' : '') + '<span>Pagó ' + money(o.total) + ' (' + esc(o.forma_pago) + ')</span> <span class="tag ' + t[0] + '">' + t[1] + '</span></div>';
+  var filas = (o.lineas || []).map(function(l){ return '<tr><td class="mono">' + esc(l.sku) + '</td><td>' + esc(l.detalle) + '</td><td class="der">' + l.cantidad + '</td><td class="der">' + money(l.precio) + '</td></tr>'; }).join('');
+  var tabla = '<div class="scroll"><table><thead><tr><th>SKU</th><th>Artículo</th><th class="der">Cant.</th><th class="der">Precio de lista</th></tr></thead><tbody>' + filas + '</tbody></table></div>';
+  var aviso = '';
+  if (o.estado !== 'cancelled') aviso = '<div class="msg err">La orden no está cancelada en Tienda Nube.</div>';
+  else if (o.pago === 'reintegrada') aviso = '<div class="msg err">Al cancelar se le devolvió el pago: no se carga nada en el panel.</div>';
+  else if (o.pago !== 'pagada') aviso = '<div class="msg err">Tienda Nube no tiene registrado el pago de esta orden: no hay saldo para cargar.</div>';
+  else if (o.registrada) aviso = '<div class="msg err">Esta orden ya se cargó desde el panel el ' + fecha(o.registrada.fecha) + ' (' + esc(o.registrada.responsable) + ').</div>';
+  var fichas = '<h2 style="margin-top:14px">Ficha de la clienta en EcommApp</h2>';
+  if (D.ficha) fichas += '<div class="elegido"><span class="tag t-c">ficha EcommApp</span><b>' + esc(nomFicha(D.ficha)) + '</b><span class="mono">' + esc(D.ficha.documento) + '</span><span>' + esc(D.ficha.ciudad) + '</span><button class="sec" id="btnOtraFicha">Cambiar</button></div>';
+  else {
+    fichas += (D.fichas.length
+      ? '<p class="sub">Tocá la ficha que corresponde.</p><div class="scroll"><table><thead><tr><th>Clienta</th><th>DNI/CUIT</th><th>Teléfono</th><th>Ciudad</th></tr></thead><tbody>' + D.fichas.map(function(f, i){ return '<tr class="clic" data-f="' + i + '"><td>' + esc(nomFicha(f)) + '</td><td class="mono">' + esc(f.documento) + '</td><td>' + esc(f.telefono) + '</td><td>' + esc(f.ciudad) + '</td></tr>'; }).join('') + '</tbody></table></div>'
+      : '<div class="msg av">No encontré en EcommApp una ficha con el DNI/CUIT ' + esc(o.documento || '(sin documento)') + '. Buscala por nombre o DNI; si no existe, creala en EcommApp y volvé a buscar.</div>') +
+      '<div class="barra"><input id="qFichaTN" placeholder="Buscar la ficha en EcommApp por nombre, apellido o DNI"><button class="sec" id="btnFichaTN">Buscar ficha</button></div>';
+  }
+  cont.innerHTML = head + aviso + tabla + '<p class="sub" style="margin-top:6px">El saldo a favor es el total que pagó en la tienda (con descuentos y envío), no el precio de lista.</p>' + fichas;
+  Array.prototype.forEach.call(cont.querySelectorAll('tr[data-f]'), function(tr){ tr.addEventListener('click', function(){ D.ficha = D.fichas[Number(tr.dataset.f)]; pintarDev(); }); });
+  if ($('btnOtraFicha')) $('btnOtraFicha').addEventListener('click', function(){ D.ficha = null; pintarDev(); });
+  if ($('btnFichaTN')){
+    $('qFichaTN').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('btnFichaTN').click(); });
+    $('btnFichaTN').addEventListener('click', function(){
+      var q = $('qFichaTN').value.trim();
+      if (q.length < 3) return;
+      $('btnFichaTN').disabled = true;
+      api({ accion:'buscar_clienta', q: q }).then(function(j){
+        if (!j.ok) throw new Error(j.error || 'error');
+        D.fichas = j.clientas || [];
+        pintarDev();
+        if (!D.fichas.length) $('devDetalle').insertAdjacentHTML('beforeend', '<div class="msg av">No encontré fichas con "' + esc(q) + '".</div>');
+      }).catch(function(e){ if (e.message !== 'sin sesión') alert('No se pudo buscar: ' + e.message); })
+        .then(function(){ if ($('btnFichaTN')) $('btnFichaTN').disabled = false; });
+    });
+  }
+}
+function registrarTN(){
+  var res = $('resultadoDev'), o = D.tn, falta = [];
+  if (o.estado !== 'cancelled' || o.pago !== 'pagada' || o.registrada){ res.innerHTML = '<div class="msg err">Esta orden no se puede cargar por el panel (mirá el aviso de arriba).</div>'; return; }
+  if (!D.ficha) falta.push('la ficha de la clienta en EcommApp');
+  if (!$('selRespDev').value) falta.push('quién la carga');
+  if (falta.length){ res.innerHTML = '<div class="msg err">Falta: ' + esc(falta.join(', ')) + '.</div>'; return; }
+  if (!confirm('Cancelación de la orden de Tienda Nube #' + o.numero + ' (' + o.clienta + ')\n\nSaldo a favor en la cuenta corriente de ' + nomFicha(D.ficha) + ': ' + money(o.total) + '\n\n¿Cargarlo en EcommApp?')) return;
+  var b = $('btnRegDev'); b.disabled = true; b.textContent = 'Cargando…';
+  res.innerHTML = '';
+  api({ accion:'registrar', cambio: { tipo:'cancelacion_tn', uid: D.uid, orden_id: o.id, id_cliente: D.ficha.id, clienta_nombre: nomFicha(D.ficha), responsable: $('selRespDev').value, observaciones: $('txtObsDev').value.trim() } })
+    .then(function(j){
+      if (!j.ok) throw new Error(j.error || 'No se pudo cargar');
+      res.innerHTML = '<div class="msg ' + (j.cta_cte_ok === false && !j.repetido ? 'av' : 'ok') + '"><b>' + esc(j.mensaje || 'Saldo a favor cargado.') + '</b></div><div class="barra"><button class="pri" id="btnOtraDev">Cargar otra devolución</button></div>';
+      $('btnOtraDev').addEventListener('click', reiniciarDev);
+      D.uid = uid();
+    })
+    .catch(function(e){ if (e.message !== 'sin sesión') res.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; })
+    .then(function(){ b.disabled = false; b.textContent = 'Registrar devolución en EcommApp'; });
+}
+
 $('selRespDev').addEventListener('change', function(){ try { localStorage.setItem('mahra_cambios_resp', $('selRespDev').value); } catch(e){} });
-function reiniciarDev(){ D = nuevaDev(); $('resDevPres').innerHTML = ''; $('resultadoDev').innerHTML = ''; $('qDevCli').value = ''; $('txtObsDev').value = ''; pintarDev(); window.scrollTo(0, 0); }
-$('btnLimpiarDev').addEventListener('click', function(){ if (D.pres && !confirm('¿Borrar lo cargado y empezar una devolución nueva?')) return; reiniciarDev(); });
+function reiniciarDev(){ D = nuevaDev(); $('resDevPres').innerHTML = ''; $('resDevTN').innerHTML = ''; $('resultadoDev').innerHTML = ''; $('qDevCli').value = ''; $('qDevTN').value = ''; $('txtObsDev').value = ''; pintarDev(); window.scrollTo(0, 0); }
+$('btnLimpiarDev').addEventListener('click', function(){ if ((D.pres || D.tn) && !confirm('¿Borrar lo cargado y empezar una devolución nueva?')) return; reiniciarDev(); });
 $('btnRegDev').addEventListener('click', function(){
+  if (D.tn){ registrarTN(); return; }
   var res = $('resultadoDev'), falta = [];
   var sel = D.lineas.filter(function(l){ return l.devolver > 0; });
   if (!D.pres) falta.push('el presupuesto de la compra');
@@ -491,10 +592,10 @@ function cargarHistorial(){
 $('btnHist').addEventListener('click', cargarHistorial);
 function pintarHistorial(h){
   $('tbHist').innerHTML = h.length ? h.map(function(r){
-    var tag = r.resolucion === 'SALDO A FAVOR' ? 't-p' : r.resolucion === 'PAGA DIFERENCIA' ? 't-c' : r.resolucion === 'DEVOLUCION' ? 't-r' : 't-g';
-    var cc = (r.resolucion === 'SALDO A FAVOR' || r.resolucion === 'DEVOLUCION') ? '<input type="checkbox" data-id="' + r.id + '"' + (r.cta_cte_ajustada ? ' checked' : '') + ' style="width:auto">' : '—';
+    var tag = r.resolucion === 'SALDO A FAVOR' ? 't-p' : r.resolucion === 'PAGA DIFERENCIA' ? 't-c' : (r.resolucion === 'DEVOLUCION' || r.resolucion === 'CANCELACION TN') ? 't-r' : 't-g';
+    var cc = (r.resolucion === 'SALDO A FAVOR' || r.resolucion === 'DEVOLUCION' || r.resolucion === 'CANCELACION TN') ? '<input type="checkbox" data-id="' + r.id + '"' + (r.cta_cte_ajustada ? ' checked' : '') + ' style="width:auto">' : '—';
     var d = new Date(r.fecha); var f = isNaN(d) ? '' : d.toLocaleString('es-AR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
-    return '<tr><td>' + f + '</td><td>' + esc(r.clienta) + '<div class="sub" style="margin:0">' + esc(r.origen) + '</div></td><td class="mono">' + esc(r.devuelve) + '</td><td class="mono">' + esc(r.lleva) + '</td><td class="der">' + money(r.diferencia) + '</td><td><span class="tag ' + tag + '">' + esc(r.resolucion) + '</span>' + (r.forma_pago ? '<div class="sub" style="margin:0">' + esc(r.forma_pago) + '</div>' : '') + '</td><td>' + esc(r.presupuesto_numero || r.presupuesto_id) + '</td><td>' + esc(r.responsable) + '</td><td>' + cc + '</td></tr>';
+    return '<tr><td>' + f + '</td><td>' + esc(r.clienta) + '<div class="sub" style="margin:0">' + esc(r.origen) + '</div></td><td class="mono">' + esc(r.devuelve) + '</td><td class="mono">' + esc(r.lleva) + '</td><td class="der">' + money(r.diferencia) + '</td><td><span class="tag ' + tag + '">' + esc(r.resolucion) + '</span>' + (r.forma_pago ? '<div class="sub" style="margin:0">' + esc(r.forma_pago) + '</div>' : '') + '</td><td>' + esc(r.presupuesto_numero || r.presupuesto_id || '—') + '</td><td>' + esc(r.responsable) + '</td><td>' + cc + '</td></tr>';
   }).join('') : '<tr><td colspan="9" class="sub">Todavía no hay cambios registrados desde el panel.</td></tr>';
   Array.prototype.forEach.call($('tbHist').querySelectorAll('input[data-id]'), function(c){
     c.addEventListener('change', function(){
