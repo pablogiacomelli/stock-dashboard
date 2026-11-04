@@ -132,8 +132,8 @@ tr.gris td{color:#9aa0a6}
     <p class="sub">Buscá a la clienta por nombre, apellido o DNI/CUIT y tocá el presupuesto de la compra que devuelve.</p>
     <div class="barra"><input id="qDevCli" placeholder="Nombre, apellido o DNI/CUIT de la clienta"><button class="pri" id="btnDevCli">Buscar compras</button></div>
     <div id="resDevPres"></div>
-    <p class="sub" style="margin-top:14px">¿Es una <b>orden de la tienda online cancelada sin devolver el pago</b>? Buscala por número de orden, nombre o DNI. Si al cancelar se le devolvió el pago, no se carga nada acá.</p>
-    <div class="barra"><input id="qDevTN" placeholder="N° de orden, nombre o DNI de la clienta"><button class="sec" id="btnDevTN">Buscar orden cancelada de Tienda Nube</button></div>
+    <p class="sub" style="margin-top:14px">¿La compra fue en la <b>tienda online</b>? Buscala por número de orden, nombre o DNI. Si la orden está entregada se devuelve el artículo al precio que pagó; si está <b>cancelada sin devolver el pago</b>, se carga solo el saldo a favor.</p>
+    <div class="barra"><input id="qDevTN" placeholder="N° de orden, nombre o DNI de la clienta"><button class="sec" id="btnDevTN">Buscar orden de Tienda Nube</button></div>
     <div id="resDevTN"></div>
   </div>
 
@@ -407,8 +407,9 @@ $('btnRegistrar').addEventListener('click', function(){
 
 // ---- devolucion (23/10/2026): presupuesto en negativo + saldo a favor en la cuenta corriente ----
 var D = nuevaDev();
-function nuevaDev(){ return { uid: uid(), pres: null, clienta: null, lineas: [], tn: null, fichas: [], ficha: null }; }
+function nuevaDev(){ return { uid: uid(), pres: null, clienta: null, lineas: [], tn: null, tnd: null, fichas: [], ficha: null }; }
 var EXP_PRES = 'Se carga en EcommApp un presupuesto con el artículo en cantidad negativa (vuelve al stock) al precio que pagó, y el importe queda como saldo a favor en la cuenta corriente de la clienta.';
+var EXP_TND = 'Se carga en EcommApp un presupuesto con el artículo en cantidad negativa (vuelve al stock) al precio que pagó en la tienda (con el descuento, sin el envío), y el importe queda como saldo a favor en la cuenta corriente de la clienta. La orden de Tienda Nube no se toca.';
 var EXP_TN = 'Se carga en la cuenta corriente de la clienta un saldo a favor por el total que pagó, con el texto "POR CANCELACION DE ORDEN DE TIENDA N° …". El stock lo repone Tienda Nube al cancelar y, si la venta estaba facturada, la nota de crédito la hace EcommApp sola.';
 function totalDev(){
   if (D.tn) return D.tn.pago === 'pagada' ? Number(D.tn.total) || 0 : 0;
@@ -416,9 +417,10 @@ function totalDev(){
 }
 function pintarDev(){
   $('totDevol').textContent = money(totalDev());
-  $('txtDevExp').textContent = D.tn ? EXP_TN : EXP_PRES;
+  $('txtDevExp').textContent = D.tn ? EXP_TN : (D.tnd ? EXP_TND : EXP_PRES);
   var cont = $('devDetalle');
   if (D.tn){ pintarDevTN(cont); return; }
+  if (D.tnd){ pintarDevTND(cont); return; }
   if (!D.pres){ cont.innerHTML = '<p class="sub">Primero elegí el presupuesto.</p>'; return; }
   var nom = (D.clienta.nombre + ' ' + D.clienta.apellido).trim();
   var head = '<div class="elegido"><b>Presupuesto ' + esc(D.pres.numero) + '</b><span>' + fecha(D.pres.fecha) + '</span><span>' + esc(nom) + '</span>' + (D.clienta.documento ? '<span class="mono">' + esc(D.clienta.documento) + '</span>' : '') + '<span>Total ' + money(D.pres.total) + '</span>' + (D.clienta.id ? ' <span class="tag t-c">ficha EcommApp</span>' : ' <span class="tag t-r">sin ficha de clienta</span>') + '</div>';
@@ -437,6 +439,8 @@ function pintarDev(){
     s.addEventListener('change', function(){ D.lineas[Number(s.dataset.i)].devolver = Number(s.value) || 0; $('totDevol').textContent = money(totalDev()); });
   });
 }
+// SKU de cada renglon de la compra, uno por linea (04/11/2026)
+function skusHtml(as){ return (as || []).map(function(a){ return '<div>' + esc(a.sku) + (a.cantidad > 1 ? ' × ' + a.cantidad : '') + '</div>'; }).join('') || '—'; }
 $('btnDevCli').addEventListener('click', function(){
   var q = $('qDevCli').value.trim(), cont = $('resDevPres');
   if (q.length < 3){ cont.innerHTML = '<div class="msg av">Escribí al menos 3 letras o números.</div>'; return; }
@@ -445,8 +449,8 @@ $('btnDevCli').addEventListener('click', function(){
     if (!j.ok) throw new Error(j.error || 'error');
     var ps = (j.presupuestos || []).filter(function(p){ return p.total > 0; });
     if (!ps.length){ cont.innerHTML = '<div class="msg av">No encontré compras de "' + esc(q) + '".</div>'; return; }
-    cont.innerHTML = '<div class="scroll"><table><thead><tr><th>Fecha</th><th>Presupuesto</th><th>Clienta</th><th>DNI/CUIT</th><th class="der">Total</th><th>Estado</th><th>Forma de pago</th><th>Vendió</th></tr></thead><tbody>' +
-      ps.map(function(p, i){ var fac = /factur/i.test(p.estado || ''); return '<tr class="' + (fac ? 'gris' : 'clic') + '" data-i="' + i + '"><td>' + fecha(p.fecha) + '</td><td>' + esc(p.numero) + '</td><td>' + esc(p.clienta) + '</td><td class="mono">' + esc(p.documento) + '</td><td class="der">' + money(p.total) + '</td><td>' + esc(p.estado) + (fac ? ' <span class="tag t-g">nota de crédito en EcommApp</span>' : '') + '</td><td>' + esc(p.condicion) + '</td><td>' + esc(p.vendedor) + '</td></tr>'; }).join('') + '</tbody></table></div><p class="sub" style="margin-top:6px">Las compras facturadas se devuelven con nota de crédito en EcommApp.</p>';
+    cont.innerHTML = '<div class="scroll"><table><thead><tr><th>Fecha</th><th>Presupuesto</th><th>SKU</th><th>Clienta</th><th>DNI/CUIT</th><th class="der">Total</th><th>Estado</th><th>Forma de pago</th><th>Vendió</th></tr></thead><tbody>' +
+      ps.map(function(p, i){ var fac = /factur/i.test(p.estado || ''); return '<tr class="' + (fac ? 'gris' : 'clic') + '" data-i="' + i + '"><td>' + fecha(p.fecha) + '</td><td>' + esc(p.numero) + '</td><td class="mono">' + skusHtml(p.articulos) + '</td><td>' + esc(p.clienta) + '</td><td class="mono">' + esc(p.documento) + '</td><td class="der">' + money(p.total) + '</td><td>' + esc(p.estado) + (fac ? ' <span class="tag t-g">nota de crédito en EcommApp</span>' : '') + '</td><td>' + esc(p.condicion) + '</td><td>' + esc(p.vendedor) + '</td></tr>'; }).join('') + '</tbody></table></div><p class="sub" style="margin-top:6px">Las compras facturadas se devuelven con nota de crédito en EcommApp.</p>';
     Array.prototype.forEach.call(cont.querySelectorAll('tr.clic'), function(tr){
       tr.addEventListener('click', function(){ elegirPresupuesto(ps[Number(tr.dataset.i)]); });
     });
@@ -458,7 +462,7 @@ function elegirPresupuesto(p){
   cont.innerHTML = '<p class="sub">Leyendo el presupuesto ' + esc(p.numero) + '…</p>';
   api({ accion:'presupuesto_detalle', id: p.id }).then(function(j){
     if (!j.ok) throw new Error(j.error || 'error');
-    D.tn = null; D.pres = j.presupuesto; D.pres.estado = p.estado; D.clienta = j.clienta;
+    D.tn = null; D.tnd = null; D.pres = j.presupuesto; D.pres.estado = p.estado; D.clienta = j.clienta;
     D.lineas = (j.lineas || []).map(function(l){ l.devolver = 0; return l; });
     if (D.lineas.length === 1 && D.lineas[0].disponible === 1 && D.lineas[0].id) D.lineas[0].devolver = 1;
     $('resDevPres').innerHTML = ''; $('resultadoDev').innerHTML = '';
@@ -470,18 +474,21 @@ var PAGO_TN = { pagada: ['t-c', 'pagada'], reintegrada: ['t-g', 'pago devuelto']
 $('btnDevTN').addEventListener('click', function(){
   var q = $('qDevTN').value.trim(), cont = $('resDevTN');
   if (q.length < 3){ cont.innerHTML = '<div class="msg av">Escribí al menos 3 letras o números.</div>'; return; }
-  cont.innerHTML = '<p class="sub">Buscando órdenes canceladas en Tienda Nube…</p>';
-  api({ accion:'ordenes_tn', q: q }).then(function(j){
+  cont.innerHTML = '<p class="sub">Buscando órdenes en Tienda Nube…</p>';
+  api({ accion:'ordenes_tn_dev', q: q }).then(function(j){
     if (!j.ok) throw new Error(j.error || 'error');
     var os = j.ordenes || [];
-    if (!os.length){ cont.innerHTML = '<div class="msg av">No encontré órdenes <b>canceladas</b> de "' + esc(q) + '" en Tienda Nube. Si la orden no está cancelada, primero cancelala en Tienda Nube.</div>'; return; }
-    cont.innerHTML = '<div class="scroll"><table><thead><tr><th>Orden</th><th>Compra</th><th>Cancelada</th><th>Clienta</th><th>DNI/CUIT</th><th class="der">Total</th><th>Forma de pago</th><th>Pago</th></tr></thead><tbody>' +
+    if (!os.length){ cont.innerHTML = '<div class="msg av">No encontré órdenes de "' + esc(q) + '" en Tienda Nube.</div>'; return; }
+    cont.innerHTML = '<div class="scroll"><table><thead><tr><th>Orden</th><th>Compra</th><th>SKU</th><th>Clienta</th><th>DNI/CUIT</th><th class="der">Total</th><th>Forma de pago</th><th>Estado</th></tr></thead><tbody>' +
       os.map(function(o, i){
-        var t = PAGO_TN[o.pago] || PAGO_TN.sin_pago, ok = o.pago === 'pagada' && !o.registrada;
-        return '<tr class="' + (ok ? 'clic' : 'gris') + '" data-i="' + i + '"><td>#' + esc(o.numero) + '</td><td>' + fecha(o.fecha) + '</td><td>' + fecha(o.cancelada) + '</td><td>' + esc(o.clienta) + '</td><td class="mono">' + esc(o.documento) + '</td><td class="der">' + money(o.total) + '</td><td>' + esc(o.forma_pago) + '</td><td><span class="tag ' + t[0] + '">' + t[1] + '</span>' + (o.registrada ? ' <span class="tag t-g">ya cargada el ' + fecha(o.registrada.fecha) + '</span>' : '') + '</td></tr>';
-      }).join('') + '</tbody></table></div><p class="sub" style="margin-top:6px">Solo se cargan las órdenes con el pago registrado en Tienda Nube. Las que tienen el pago devuelto no van por el panel.</p>';
+        var canc = o.estado === 'cancelled', ok = canc || o.se_puede;
+        var t = canc ? '<span class="tag t-r">cancelada</span>' : (PAGO_TN[o.pago] ? '<span class="tag ' + PAGO_TN[o.pago][0] + '">' + PAGO_TN[o.pago][1] + '</span>' : '');
+        var dv = (o.devoluciones || []).length ? ' <span class="tag t-g">ya devolvió ' + esc(o.devoluciones.map(function(d){ return d.devuelve; }).join(', ')) + '</span>' : '';
+        var mot = (!canc && o.motivo) ? '<div class="sub" style="margin:0">' + esc(o.motivo) + '</div>' : '';
+        return '<tr class="' + (ok ? 'clic' : 'gris') + '" data-i="' + i + '"><td>#' + esc(o.numero) + '</td><td>' + fecha(o.fecha) + '</td><td class="mono">' + skusHtml(o.articulos) + '</td><td>' + esc(o.clienta) + '</td><td class="mono">' + esc(o.documento) + '</td><td class="der">' + money(o.total) + '</td><td>' + esc(o.forma_pago) + '</td><td>' + t + dv + mot + '</td></tr>';
+      }).join('') + '</tbody></table></div><p class="sub" style="margin-top:6px">Se devuelven por el panel las órdenes con el pago registrado en Tienda Nube. Las canceladas cargan solo el saldo a favor.</p>';
     Array.prototype.forEach.call(cont.querySelectorAll('tr.clic'), function(tr){
-      tr.addEventListener('click', function(){ elegirOrdenTN(os[Number(tr.dataset.i)]); });
+      tr.addEventListener('click', function(){ var o = os[Number(tr.dataset.i)]; if (o.estado === 'cancelled') elegirOrdenTN(o); else elegirOrdenTND(o); });
     });
   }).catch(function(e){ if (e.message !== 'sin sesión') cont.innerHTML = '<div class="msg err">No se pudo buscar: ' + esc(e.message) + '</div>'; });
 });
@@ -508,15 +515,20 @@ function pintarDevTN(cont){
   else if (o.pago === 'reintegrada') aviso = '<div class="msg err">Al cancelar se le devolvió el pago: no se carga nada en el panel.</div>';
   else if (o.pago !== 'pagada') aviso = '<div class="msg err">Tienda Nube no tiene registrado el pago de esta orden: no hay saldo para cargar.</div>';
   else if (o.registrada) aviso = '<div class="msg err">Esta orden ya se cargó desde el panel el ' + fecha(o.registrada.fecha) + ' (' + esc(o.registrada.responsable) + ').</div>';
+  cont.innerHTML = head + aviso + tabla + '<p class="sub" style="margin-top:6px">El saldo a favor es el total que pagó en la tienda (con descuentos y envío), no el precio de lista.</p>' + htmlFichas(o.documento);
+  enlazarFichas();
+}
+// Ficha de la clienta en EcommApp (ordenes de Tienda Nube): se proponen las fichas con el DNI de la orden o se busca a mano.
+function htmlFichas(doc){
   var fichas = '<h2 style="margin-top:14px">Ficha de la clienta en EcommApp</h2>';
-  if (D.ficha) fichas += '<div class="elegido"><span class="tag t-c">ficha EcommApp</span><b>' + esc(nomFicha(D.ficha)) + '</b><span class="mono">' + esc(D.ficha.documento) + '</span><span>' + esc(D.ficha.ciudad) + '</span><button class="sec" id="btnOtraFicha">Cambiar</button></div>';
-  else {
-    fichas += (D.fichas.length
-      ? '<p class="sub">Tocá la ficha que corresponde.</p><div class="scroll"><table><thead><tr><th>Clienta</th><th>DNI/CUIT</th><th>Teléfono</th><th>Ciudad</th></tr></thead><tbody>' + D.fichas.map(function(f, i){ return '<tr class="clic" data-f="' + i + '"><td>' + esc(nomFicha(f)) + '</td><td class="mono">' + esc(f.documento) + '</td><td>' + esc(f.telefono) + '</td><td>' + esc(f.ciudad) + '</td></tr>'; }).join('') + '</tbody></table></div>'
-      : '<div class="msg av">No encontré en EcommApp una ficha con el DNI/CUIT ' + esc(o.documento || '(sin documento)') + '. Buscala por nombre o DNI; si no existe, creala en EcommApp y volvé a buscar.</div>') +
-      '<div class="barra"><input id="qFichaTN" placeholder="Buscar la ficha en EcommApp por nombre, apellido o DNI"><button class="sec" id="btnFichaTN">Buscar ficha</button></div>';
-  }
-  cont.innerHTML = head + aviso + tabla + '<p class="sub" style="margin-top:6px">El saldo a favor es el total que pagó en la tienda (con descuentos y envío), no el precio de lista.</p>' + fichas;
+  if (D.ficha) return fichas + '<div class="elegido"><span class="tag t-c">ficha EcommApp</span><b>' + esc(nomFicha(D.ficha)) + '</b><span class="mono">' + esc(D.ficha.documento) + '</span><span class="mono">ID ' + esc(D.ficha.id) + '</span><span>' + esc(D.ficha.ciudad) + '</span><button class="sec" id="btnOtraFicha">Cambiar</button></div>';
+  return fichas + (D.fichas.length
+      ? '<p class="sub">Tocá la ficha que corresponde.</p><div class="scroll"><table><thead><tr><th>Clienta</th><th>DNI/CUIT</th><th>Teléfono</th><th>Ciudad</th><th>ID</th></tr></thead><tbody>' + D.fichas.map(function(f, i){ return '<tr class="clic" data-f="' + i + '"><td>' + esc(nomFicha(f)) + '</td><td class="mono">' + esc(f.documento) + '</td><td>' + esc(f.telefono) + '</td><td>' + esc(f.ciudad) + '</td><td class="mono">' + esc(f.id) + '</td></tr>'; }).join('') + '</tbody></table></div>'
+      : '<div class="msg av">No encontré en EcommApp una ficha con el DNI/CUIT ' + esc(doc || '(sin documento)') + '. Buscala por nombre o DNI; si no existe, creala en EcommApp y volvé a buscar.</div>') +
+    '<div class="barra"><input id="qFichaTN" placeholder="Buscar la ficha en EcommApp por nombre, apellido o DNI"><button class="sec" id="btnFichaTN">Buscar ficha</button></div>';
+}
+function enlazarFichas(){
+  var cont = $('devDetalle');
   Array.prototype.forEach.call(cont.querySelectorAll('tr[data-f]'), function(tr){ tr.addEventListener('click', function(){ D.ficha = D.fichas[Number(tr.dataset.f)]; pintarDev(); }); });
   if ($('btnOtraFicha')) $('btnOtraFicha').addEventListener('click', function(){ D.ficha = null; pintarDev(); });
   if ($('btnFichaTN')){
@@ -534,6 +546,64 @@ function pintarDevTN(cont){
         .then(function(){ if ($('btnFichaTN')) $('btnFichaTN').disabled = false; });
     });
   }
+}
+// ---- devolucion de compras de Tienda Nube NO canceladas (03/11/2026): presupuesto en negativo al precio pagado + saldo a favor ----
+function elegirOrdenTND(o){
+  var cont = $('devDetalle');
+  cont.innerHTML = '<p class="sub">Leyendo la orden #' + esc(o.numero) + '…</p>';
+  api({ accion:'orden_tn_dev', id: o.id }).then(function(j){
+    if (!j.ok) throw new Error(j.error || 'error');
+    D = nuevaDev(); D.tnd = j.orden; D.fichas = j.fichas || [];
+    D.lineas = (j.lineas || []).map(function(l){ l.devolver = 0; return l; });
+    if (D.lineas.length === 1 && D.lineas[0].disponible === 1 && D.lineas[0].id) D.lineas[0].devolver = 1;
+    if (D.fichas.length === 1) D.ficha = D.fichas[0];
+    $('resDevTN').innerHTML = ''; $('resDevPres').innerHTML = ''; $('resultadoDev').innerHTML = '';
+    pintarDev();
+  }).catch(function(e){ if (e.message !== 'sin sesión') cont.innerHTML = '<div class="msg err">No se pudo leer la orden: ' + esc(e.message) + '</div>'; });
+}
+function pintarDevTND(cont){
+  var o = D.tnd, t = PAGO_TN[o.pago] || PAGO_TN.sin_pago;
+  var head = '<div class="elegido"><b>Orden TN #' + esc(o.numero) + '</b><span>Compra ' + fecha(o.fecha) + '</span><span>' + esc(o.clienta) + '</span>' + (o.documento ? '<span class="mono">' + esc(o.documento) + '</span>' : '') + '<span>Pagó ' + money(o.total) + ' (' + esc(o.forma_pago) + ')</span> <span class="tag ' + t[0] + '">' + t[1] + '</span></div>';
+  var aviso = '';
+  if (!o.se_puede) aviso = '<div class="msg err">' + esc(o.motivo) + '</div>';
+  else {
+    if (o.descuento) aviso += '<div class="msg av">La orden tuvo ' + String(o.descuento).replace('.', ',') + '% de descuento: el precio de cada artículo ya lo incluye.</div>';
+    if (o.envio) aviso += '<div class="msg av">El envío (' + money(o.envio) + ') no se devuelve como saldo a favor.</div>';
+  }
+  var filas = D.lineas.map(function(l, i){
+    var opts = ''; for (var n = 0; n <= l.disponible; n++) opts += '<option value="' + n + '"' + (n === l.devolver ? ' selected' : '') + '>' + n + '</option>';
+    var ya = l.devuelto_antes ? ' <span class="tag t-p">ya devolvió ' + l.devuelto_antes + '</span>' : '';
+    var sinInv = !l.id ? ' <span class="tag t-r">no está en el inventario</span>' : '';
+    return '<tr><td class="mono">' + esc(l.sku) + '</td><td>' + esc(l.detalle) + ya + sinInv + '</td><td class="der">' + l.cantidad + '</td><td class="der">' + money(l.precio_lista) + '</td><td class="der"><b>' + money(l.precio) + '</b></td><td>' + (o.se_puede && l.disponible > 0 && l.id ? '<select data-i="' + i + '" style="width:80px">' + opts + '</select>' : '—') + '</td></tr>';
+  }).join('');
+  cont.innerHTML = head + aviso + '<div class="scroll"><table><thead><tr><th>SKU</th><th>Artículo</th><th class="der">Compró</th><th class="der">Lista</th><th class="der">Pagó c/u</th><th>Devuelve</th></tr></thead><tbody>' + filas + '</tbody></table></div>' + (o.se_puede ? htmlFichas(o.documento) : '');
+  Array.prototype.forEach.call(cont.querySelectorAll('select[data-i]'), function(s){
+    s.addEventListener('change', function(){ D.lineas[Number(s.dataset.i)].devolver = Number(s.value) || 0; $('totDevol').textContent = money(totalDev()); });
+  });
+  enlazarFichas();
+}
+function registrarTND(){
+  var res = $('resultadoDev'), o = D.tnd, falta = [];
+  if (!o.se_puede){ res.innerHTML = '<div class="msg err">Esta orden no se puede devolver por el panel (mirá el aviso de arriba).</div>'; return; }
+  var sel = D.lineas.filter(function(l){ return l.devolver > 0; });
+  if (!sel.length) falta.push('qué artículo devuelve');
+  if (!D.ficha) falta.push('la ficha de la clienta en EcommApp');
+  if (!$('selRespDev').value) falta.push('quién hace la devolución');
+  if (falta.length){ res.innerHTML = '<div class="msg err">Falta: ' + esc(falta.join(', ')) + '.</div>'; return; }
+  var txt = 'Devolución de la orden de Tienda Nube #' + o.numero + ' (' + o.clienta + '):\n' + sel.map(function(l){ return l.sku + ' x' + l.devolver + ' (' + money(l.precio * l.devolver) + ')'; }).join('\n') +
+    '\n\nSaldo a favor en la cuenta corriente de ' + nomFicha(D.ficha) + ': ' + money(totalDev()) + '\n\n¿Registrar la devolución en EcommApp?';
+  if (!confirm(txt)) return;
+  var b = $('btnRegDev'); b.disabled = true; b.textContent = 'Registrando… (puede tardar un minuto)';
+  res.innerHTML = '';
+  api({ accion:'registrar', cambio: { tipo:'devolucion_tn', uid: D.uid, orden_id: o.id, devuelve: sel.map(function(l){ return { sku: l.sku, cantidad: l.devolver }; }), clienta: D.ficha, responsable: $('selRespDev').value, observaciones: $('txtObsDev').value.trim() } })
+    .then(function(j){
+      if (!j.ok) throw new Error(j.error || 'No se pudo registrar');
+      res.innerHTML = '<div class="msg ' + (j.cta_cte_ok === false && !j.repetido ? 'av' : 'ok') + '"><b>' + esc(j.mensaje || 'Devolución registrada.') + '</b><br>Presupuesto N° ' + esc(j.presupuesto_numero || '?') + ' en EcommApp.</div><div class="barra"><button class="pri" id="btnOtraDev">Cargar otra devolución</button></div>';
+      $('btnOtraDev').addEventListener('click', reiniciarDev);
+      D.uid = uid();
+    })
+    .catch(function(e){ if (e.message !== 'sin sesión') res.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; })
+    .then(function(){ b.disabled = false; b.textContent = 'Registrar devolución en EcommApp'; });
 }
 function registrarTN(){
   var res = $('resultadoDev'), o = D.tn, falta = [];
@@ -557,9 +627,10 @@ function registrarTN(){
 
 $('selRespDev').addEventListener('change', function(){ try { localStorage.setItem('mahra_cambios_resp', $('selRespDev').value); } catch(e){} });
 function reiniciarDev(){ D = nuevaDev(); $('resDevPres').innerHTML = ''; $('resDevTN').innerHTML = ''; $('resultadoDev').innerHTML = ''; $('qDevCli').value = ''; $('qDevTN').value = ''; $('txtObsDev').value = ''; pintarDev(); window.scrollTo(0, 0); }
-$('btnLimpiarDev').addEventListener('click', function(){ if ((D.pres || D.tn) && !confirm('¿Borrar lo cargado y empezar una devolución nueva?')) return; reiniciarDev(); });
+$('btnLimpiarDev').addEventListener('click', function(){ if ((D.pres || D.tn || D.tnd) && !confirm('¿Borrar lo cargado y empezar una devolución nueva?')) return; reiniciarDev(); });
 $('btnRegDev').addEventListener('click', function(){
   if (D.tn){ registrarTN(); return; }
+  if (D.tnd){ registrarTND(); return; }
   var res = $('resultadoDev'), falta = [];
   var sel = D.lineas.filter(function(l){ return l.devolver > 0; });
   if (!D.pres) falta.push('el presupuesto de la compra');
