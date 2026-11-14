@@ -407,6 +407,8 @@ $('btnRegistrar').addEventListener('click', function(){
 
 // ---- devolucion (23/10/2026): presupuesto en negativo + saldo a favor en la cuenta corriente ----
 var D = nuevaDev();
+// 13/11/2026 (Pablo): las compras facturadas tambien se devuelven (cambio en dos pasos), con este cartel en rojo.
+var CARTEL_FACT = '<div class="msg err" style="font-weight:700;font-size:15px">ESTE ARTÍCULO ESTÁ FACTURADO, CORROBORAR SI ES NECESARIO GENERAR NOTA DE CRÉDITO</div>';
 function nuevaDev(){ return { uid: uid(), pres: null, clienta: null, lineas: [], tn: null, tnd: null, fichas: [], ficha: null }; }
 var EXP_PRES = 'Se carga en EcommApp un presupuesto con el artículo en cantidad negativa (vuelve al stock) al precio que pagó, y el importe queda como saldo a favor en la cuenta corriente de la clienta.';
 var EXP_TND = 'Se carga en EcommApp un presupuesto con el artículo en cantidad negativa (vuelve al stock) al precio que pagó en la tienda (con el descuento, sin el envío), y el importe queda como saldo a favor en la cuenta corriente de la clienta. La orden de Tienda Nube no se toca.';
@@ -425,7 +427,7 @@ function pintarDev(){
   var nom = (D.clienta.nombre + ' ' + D.clienta.apellido).trim();
   var head = '<div class="elegido"><b>Presupuesto ' + esc(D.pres.numero) + '</b><span>' + fecha(D.pres.fecha) + '</span><span>' + esc(nom) + '</span>' + (D.clienta.documento ? '<span class="mono">' + esc(D.clienta.documento) + '</span>' : '') + '<span>Total ' + money(D.pres.total) + '</span>' + (D.clienta.id ? ' <span class="tag t-c">ficha EcommApp</span>' : ' <span class="tag t-r">sin ficha de clienta</span>') + '</div>';
   var avisos = '';
-  if (D.pres.facturado){ cont.innerHTML = head + '<div class="msg err">Este presupuesto está <b>facturado</b>: la devolución va con <b>nota de crédito en EcommApp</b>, no por el panel.</div>'; return; }
+  if (D.pres.facturado) avisos += CARTEL_FACT;
   if (D.pres.descuento_prorrateado) avisos += '<div class="msg av">El presupuesto tenía un descuento general: el precio de cada artículo ya lo incluye.</div>';
   if (!D.clienta.id) avisos += '<div class="msg err">El presupuesto no tiene la ficha de la clienta en EcommApp: no se puede cargar el saldo a favor desde el panel.</div>';
   var filas = D.lineas.map(function(l, i){
@@ -451,7 +453,7 @@ $('btnDevCli').addEventListener('click', function(){
     var ps = (j.presupuestos || []).filter(function(p){ return p.total >= 0; });
     if (!ps.length){ cont.innerHTML = '<div class="msg av">No encontré compras de "' + esc(q) + '".</div>'; return; }
     cont.innerHTML = '<div class="scroll"><table><thead><tr><th>Fecha</th><th>Presupuesto</th><th>SKU</th><th>Clienta</th><th>DNI/CUIT</th><th class="der">Total</th><th>Estado</th><th>Forma de pago</th><th>Vendió</th></tr></thead><tbody>' +
-      ps.map(function(p, i){ var fac = /factur/i.test(p.estado || ''); return '<tr class="' + (fac ? 'gris' : 'clic') + '" data-i="' + i + '"><td>' + fecha(p.fecha) + '</td><td>' + esc(p.numero) + '</td><td class="mono">' + skusHtml(p.articulos) + '</td><td>' + esc(p.clienta) + '</td><td class="mono">' + esc(p.documento) + '</td><td class="der">' + money(p.total) + '</td><td>' + esc(p.estado) + (fac ? ' <span class="tag t-g">nota de crédito en EcommApp</span>' : '') + '</td><td>' + esc(p.condicion) + '</td><td>' + esc(p.vendedor) + '</td></tr>'; }).join('') + '</tbody></table></div><p class="sub" style="margin-top:6px">Las compras facturadas se devuelven con nota de crédito en EcommApp.</p>';
+      ps.map(function(p, i){ var fac = /factur/i.test(p.estado || ''); return '<tr class="clic" data-i="' + i + '"><td>' + fecha(p.fecha) + '</td><td>' + esc(p.numero) + '</td><td class="mono">' + skusHtml(p.articulos) + '</td><td>' + esc(p.clienta) + '</td><td class="mono">' + esc(p.documento) + '</td><td class="der">' + money(p.total) + '</td><td>' + esc(p.estado) + (fac ? ' <span class="tag t-r">FACTURADO</span>' : '') + '</td><td>' + esc(p.condicion) + '</td><td>' + esc(p.vendedor) + '</td></tr>'; }).join('') + '</tbody></table></div><p class="sub" style="margin-top:6px">Las compras facturadas también se pueden devolver: corroborá si hace falta la nota de crédito en EcommApp.</p>';
     Array.prototype.forEach.call(cont.querySelectorAll('tr.clic'), function(tr){
       tr.addEventListener('click', function(){ elegirPresupuesto(ps[Number(tr.dataset.i)]); });
     });
@@ -486,6 +488,7 @@ $('btnDevTN').addEventListener('click', function(){
         var t = canc ? '<span class="tag t-r">cancelada</span>' : (PAGO_TN[o.pago] ? '<span class="tag ' + PAGO_TN[o.pago][0] + '">' + PAGO_TN[o.pago][1] + '</span>' : '');
         var dv = (o.devoluciones || []).length ? ' <span class="tag t-g">ya devolvió ' + esc(o.devoluciones.map(function(d){ return d.devuelve; }).join(', ')) + '</span>' : '';
         var mot = (!canc && o.motivo) ? '<div class="sub" style="margin:0">' + esc(o.motivo) + '</div>' : '';
+        if (!canc && o.factura) dv += ' <span class="tag t-r">FACTURADA</span>';
         return '<tr class="' + (ok ? 'clic' : 'gris') + '" data-i="' + i + '"><td>#' + esc(o.numero) + '</td><td>' + fecha(o.fecha) + '</td><td class="mono">' + skusHtml(o.articulos) + '</td><td>' + esc(o.clienta) + '</td><td class="mono">' + esc(o.documento) + '</td><td class="der">' + money(o.total) + '</td><td>' + esc(o.forma_pago) + '</td><td>' + t + dv + mot + '</td></tr>';
       }).join('') + '</tbody></table></div><p class="sub" style="margin-top:6px">Se devuelven por el panel las órdenes con el pago registrado en Tienda Nube. Las canceladas cargan solo el saldo a favor.</p>';
     Array.prototype.forEach.call(cont.querySelectorAll('tr.clic'), function(tr){
@@ -568,6 +571,8 @@ function pintarDevTND(cont){
   var aviso = '';
   if (!o.se_puede) aviso = '<div class="msg err">' + esc(o.motivo) + '</div>';
   else {
+    if (o.factura) aviso += CARTEL_FACT.replace('</div>', '<div style="font-weight:400;font-size:13px;margin-top:4px">' + esc(o.factura) + (o.nota_credito ? ' · ya tiene ' + esc(o.nota_credito) : ' · sin nota de crédito') + '</div></div>');
+    else if (o.factura_sin_dato) aviso += '<div class="msg av">No pude comprobar si la orden está facturada: revisalo en EcommApp antes de registrar.</div>';
     if (o.descuento) aviso += '<div class="msg av">La orden tuvo ' + String(o.descuento).replace('.', ',') + '% de descuento: el precio de cada artículo ya lo incluye.</div>';
     if (o.envio) aviso += '<div class="msg av">El envío (' + money(o.envio) + ') no se devuelve como saldo a favor.</div>';
   }
@@ -591,7 +596,7 @@ function registrarTND(){
   if (!D.ficha) falta.push('la ficha de la clienta en EcommApp');
   if (!$('selRespDev').value) falta.push('quién hace la devolución');
   if (falta.length){ res.innerHTML = '<div class="msg err">Falta: ' + esc(falta.join(', ')) + '.</div>'; return; }
-  var txt = 'Devolución de la orden de Tienda Nube #' + o.numero + ' (' + o.clienta + '):\n' + sel.map(function(l){ return l.sku + ' x' + l.devolver + ' (' + money(l.precio * l.devolver) + ')'; }).join('\n') +
+  var txt = (o.factura ? 'ESTE ARTÍCULO ESTÁ FACTURADO, CORROBORAR SI ES NECESARIO GENERAR NOTA DE CRÉDITO\n\n' : '') + 'Devolución de la orden de Tienda Nube #' + o.numero + ' (' + o.clienta + '):\n' + sel.map(function(l){ return l.sku + ' x' + l.devolver + ' (' + money(l.precio * l.devolver) + ')'; }).join('\n') +
     '\n\nSaldo a favor en la cuenta corriente de ' + nomFicha(D.ficha) + ': ' + money(totalDev()) + '\n\n¿Registrar la devolución en EcommApp?';
   if (!confirm(txt)) return;
   var b = $('btnRegDev'); b.disabled = true; b.textContent = 'Registrando… (puede tardar un minuto)';
@@ -635,13 +640,12 @@ $('btnRegDev').addEventListener('click', function(){
   var res = $('resultadoDev'), falta = [];
   var sel = D.lineas.filter(function(l){ return l.devolver > 0; });
   if (!D.pres) falta.push('el presupuesto de la compra');
-  else if (D.pres.facturado){ res.innerHTML = '<div class="msg err">El presupuesto está facturado: la devolución va con nota de crédito en EcommApp.</div>'; return; }
   else if (!sel.length) falta.push('qué artículo devuelve');
   if (D.pres && !D.clienta.id) falta.push('la ficha de la clienta en EcommApp');
   if (!$('selRespDev').value) falta.push('quién hace la devolución');
   if (falta.length){ res.innerHTML = '<div class="msg err">Falta: ' + esc(falta.join(', ')) + '.</div>'; return; }
   var nom = (D.clienta.nombre + ' ' + D.clienta.apellido).trim();
-  var txt = 'Devolución de ' + nom + ' (presupuesto ' + D.pres.numero + '):\n' + sel.map(function(l){ return l.sku + ' x' + l.devolver + ' (' + money(l.precio * l.devolver) + ')'; }).join('\n') +
+  var txt = (D.pres.facturado ? 'ESTE ARTÍCULO ESTÁ FACTURADO, CORROBORAR SI ES NECESARIO GENERAR NOTA DE CRÉDITO\n\n' : '') + 'Devolución de ' + nom + ' (presupuesto ' + D.pres.numero + '):\n' + sel.map(function(l){ return l.sku + ' x' + l.devolver + ' (' + money(l.precio * l.devolver) + ')'; }).join('\n') +
     '\n\nSaldo a favor en su cuenta corriente: ' + money(totalDev()) + '\n\n¿Registrar la devolución en EcommApp?';
   if (!confirm(txt)) return;
   var b = $('btnRegDev'); b.disabled = true; b.textContent = 'Registrando… (puede tardar un minuto)';
