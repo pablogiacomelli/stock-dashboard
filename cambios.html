@@ -158,7 +158,7 @@ tr.gris td{color:#9aa0a6}
 <section id="tab-hist" class="hide">
   <div class="card">
     <div class="barra" style="margin-top:0"><h2 style="margin:0">Cambios y devoluciones registrados</h2><div style="flex:1"></div><button class="sec" id="btnHist">⟳ Actualizar</button></div>
-    <p class="sub">En los cambios con saldo a favor, tildá "Cta cte cargada" cuando ya lo cargaste en la cuenta corriente de la clienta.</p>
+    <p class="sub">El saldo a favor se carga solo en la cuenta corriente de la clienta y queda tildado en "Cta cte cargada". Si no está tildado, fijate en EcommApp si el saldo ya está antes de cargarlo a mano.</p>
     <div class="scroll" style="max-height:70vh"><table><thead><tr><th>Fecha</th><th>Clienta</th><th>Devuelve</th><th>Se lleva</th><th class="der">Diferencia</th><th>Resolución</th><th>Presupuesto</th><th>Hizo</th><th>Cta cte cargada</th></tr></thead><tbody id="tbHist"></tbody></table></div>
   </div>
 </section>
@@ -366,7 +366,7 @@ function pintarTodo(){
   favor.classList.add('hide');
   if (!C.devuelve.length || !C.lleva.length) txt = '';
   else if (t.dif > 0) txt = 'La clienta paga la diferencia. Se cobra en la caja MAHRA LDT.';
-  else if (t.dif < 0){ txt = 'Saldo a favor de la clienta.'; favor.innerHTML = '<b>Saldo a favor de ' + money(-t.dif) + '.</b> El panel registra el cambio en EcommApp, pero el saldo hay que cargarlo a mano en la cuenta corriente de la clienta. Después tildalo en el Historial.'; favor.classList.remove('hide'); }
+  else if (t.dif < 0){ txt = 'Saldo a favor de la clienta.'; favor.innerHTML = '<b>Saldo a favor de ' + money(-t.dif) + '.</b> Al registrar el cambio, el panel lo carga solo en la cuenta corriente de la clienta. No lo cargues a mano, salvo que el panel avise que no pudo.'; favor.classList.remove('hide'); }
   else txt = 'Sin diferencia.';
   $('txtDif').textContent = txt;
 }
@@ -388,7 +388,7 @@ $('btnRegistrar').addEventListener('click', function(){
   var forma = $('selForma').selectedOptions[0] ? $('selForma').selectedOptions[0].textContent : '';
   var resumen = 'Devuelve: ' + C.devuelve.map(function(x){ return x.sku + ' (' + money(x.precio) + ')'; }).join(', ') +
     '\nSe lleva: ' + C.lleva.map(function(x){ return x.sku + ' (' + money(x.precio) + ')'; }).join(', ') +
-    '\n' + (t.dif > 0 ? 'Cobra diferencia: ' + money(t.dif) + ' en ' + forma : t.dif < 0 ? 'Saldo a favor: ' + money(-t.dif) + ' (cargarlo a mano en la cta cte)' : 'Sin diferencia') +
+    '\n' + (t.dif > 0 ? 'Cobra diferencia: ' + money(t.dif) + ' en ' + forma : t.dif < 0 ? 'Saldo a favor: ' + money(-t.dif) + ' (se carga solo en la cta cte de la clienta)' : 'Sin diferencia') +
     '\n\n¿Registrar el cambio en EcommApp?';
   if (!confirm(resumen)) return;
   var b = $('btnRegistrar'); b.disabled = true; b.textContent = 'Registrando… (puede tardar un minuto)';
@@ -397,7 +397,7 @@ $('btnRegistrar').addEventListener('click', function(){
   api({ accion:'registrar', cambio: { uid: C.uid, devuelve: C.devuelve, lleva: C.lleva, clienta: cl, origen: C.origen, responsable: $('selResp').value, forma_pago_id: t.dif > 0 ? Number($('selForma').value) : 0, observaciones: $('txtObs').value.trim() } })
     .then(function(j){
       if (!j.ok) throw new Error(j.error || 'No se pudo registrar');
-      res.innerHTML = '<div class="msg ok"><b>' + esc(j.mensaje || 'Cambio registrado.') + '</b><br>Presupuesto N° ' + esc(j.presupuesto_numero || '?') + ' en EcommApp.</div><div class="barra"><button class="pri" id="btnOtro">Cargar otro cambio</button></div>';
+      res.innerHTML = '<div class="msg ' + (Number(j.diferencia) < 0 && j.cta_cte_ok === false && !j.repetido ? 'av' : 'ok') + '"><b>' + esc(j.mensaje || 'Cambio registrado.') + '</b><br>Presupuesto N° ' + esc(j.presupuesto_numero || '?') + ' en EcommApp.</div><div class="barra"><button class="pri" id="btnOtro">Cargar otro cambio</button></div>';
       $('btnOtro').addEventListener('click', reiniciar);
       C.uid = uid();
     })
