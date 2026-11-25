@@ -449,8 +449,9 @@ $('btnDevCli').addEventListener('click', function(){
   cont.innerHTML = '<p class="sub">Buscando presupuestos en EcommApp…</p>';
   api({ accion:'presupuestos_clienta', q: q }).then(function(j){
     if (!j.ok) throw new Error(j.error || 'error');
-    // 11/11/2026 (Pablo): tambien los cambios en $0 (ej. 1399): lo que se llevo en el cambio se puede devolver. Quedan afuera las devoluciones (total negativo).
-    var ps = (j.presupuestos || []).filter(function(p){ return p.total >= 0; });
+    // 11/11/2026 (Pablo): tambien los cambios en $0 (ej. 1399): lo que se llevo en el cambio se puede devolver.
+    // 24/11/2026 (Pablo): y los cambios con total negativo (ej. 1210). Quedan afuera las devoluciones: no tienen ningun articulo que se haya llevado.
+    var ps = (j.presupuestos || []).filter(function(p){ return p.total >= 0 || (p.articulos || []).length > 0; });
     if (!ps.length){ cont.innerHTML = '<div class="msg av">No encontré compras de "' + esc(q) + '".</div>'; return; }
     cont.innerHTML = '<div class="scroll"><table><thead><tr><th>Fecha</th><th>Presupuesto</th><th>SKU</th><th>Clienta</th><th>DNI/CUIT</th><th class="der">Total</th><th>Estado</th><th>Forma de pago</th><th>Vendió</th></tr></thead><tbody>' +
       ps.map(function(p, i){ var fac = /factur/i.test(p.estado || ''); return '<tr class="clic" data-i="' + i + '"><td>' + fecha(p.fecha) + '</td><td>' + esc(p.numero) + '</td><td class="mono">' + skusHtml(p.articulos) + '</td><td>' + esc(p.clienta) + '</td><td class="mono">' + esc(p.documento) + '</td><td class="der">' + money(p.total) + '</td><td>' + esc(p.estado) + (fac ? ' <span class="tag t-r">FACTURADO</span>' : '') + '</td><td>' + esc(p.condicion) + '</td><td>' + esc(p.vendedor) + '</td></tr>'; }).join('') + '</tbody></table></div><p class="sub" style="margin-top:6px">Las compras facturadas también se pueden devolver: corroborá si hace falta la nota de crédito en EcommApp.</p>';
